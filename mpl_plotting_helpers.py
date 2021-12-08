@@ -55,11 +55,11 @@ import random
 # General helpers has a number of functions I use frequently in
 # my scripts. They are all placed in that module purely for
 # convenience and generalizability.
-from . import general_helpers as gh
+import general_helpers as gh
 
 # The Pandas Helper file has scripts that help manage Pandas
 # DataFrames, and perform various actions on lists of dataframes
-from . import pandas_helpers as ph
+import pandas_helpers as ph
 
 print(f"matplotlib    {matplotlib.__version__}")
 print(f"numpy         {np.__version__}\n")
@@ -449,7 +449,7 @@ def infer_aspect_ratio(xlabels,
         return "auto"
 
 def apply_sigstar(q_value,
-                  char = "*"):
+                  char = "$*$"):
     """
     =================================================================================================
     apply_sigstar(q_value, char)
@@ -478,21 +478,21 @@ def apply_sigstar(q_value,
     # Or if the input value is less than 0.001
     elif q <= 0.001:
         # Then return the char variable three times
-        return f"{char}{char}{char}"
+        return fr" {char}{char}{char}"
     # Or if the input value is less than 0.01
     elif q <= 0.01:
         # Then return the char variable twice
-        return f"{char}{char}"
+        return fr" {char}{char}"
     # Or if the input value is less than 0.05
     elif q <= 0.05:
         # Then return the char variable once
-        return f"{char}"
+        return fr" {char}"
     # Otherwise
     else:
         # Return an empty string
-        return ""
+        return "n.s."
 
-def make_sigstars(q_list):
+def make_sigstars(q_list, char = fr"$*$"):
     """
     =================================================================================================
     make_sigstars(q_list)
@@ -733,7 +733,7 @@ def plot_heatmap(data_list,
                          cmap = cmap,
                          bad_color = bad_color,
                          clb_label = clb_label,
-                         heat_title = f"{heat_title} Filtered by FDR < 0.05",
+                         heat_title = f"{heat_title}",
                          sig_filter = False,
                          significance = filt_slist,
                          img_type = img_type,
