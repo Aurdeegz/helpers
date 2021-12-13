@@ -42,6 +42,9 @@ import matplotlib.cm as cm
 #    ticker is used for placing labels on heatmaps
 import matplotlib.ticker as ticker
 
+from matplotlib import gridspec
+from matplotlib.patches import Patch
+
 # Numpy is used for creating arrays that matplotlib is able to handle
 import numpy as np
 
@@ -55,20 +58,25 @@ import random
 # General helpers has a number of functions I use frequently in
 # my scripts. They are all placed in that module purely for
 # convenience and generalizability.
-import general_helpers as gh
+from . import general_helpers as gh
 
 # The Pandas Helper file has scripts that help manage Pandas
 # DataFrames, and perform various actions on lists of dataframes
-import pandas_helpers as ph
+from . import pandas_helpers as ph
+
+from . import stats_helpers as sh
 
 print(f"matplotlib    {matplotlib.__version__}")
 print(f"numpy         {np.__version__}\n")
+
+plt.rcParams.update(plt.rcParamsDefault)
+plt.rcParams['font.family'] = "sans-serif"
 
 #
 #
 ############################################################################################################
 #
-#     Global Variables: Bar Plots
+#     Global Variables
 
 # This dictionary has some predefined sets of colours that can be used for
 # barplot plotting. These colours should all be base matplotlib colours,
@@ -106,6 +114,9 @@ colours = {"blues"  : ["steelblue", "cyan", "blue", "darkblue", "dodgerblue",
                       "sandybrown", "burlywood", "wheat",
                        "black", "dimgrey", "grey", "darkgrey",
                        "silver", "lightgrey", "gainsboro", "white"]}
+
+tab_colours = ["tab:blue", "tab:orange", "tab:green", "tab:red",
+               "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
 
 #
 #
@@ -252,22 +263,22 @@ def handle_colours(colour_type,
         # So just return a random sample from the all list of size n_groups.
         return random.sample(colours['all'], n_groups)
 
-def plot_bars(xvals,
-              yval_matrix,
-              col_labels = None,
-              separation = 0.3,
-              colour_type = "all",
-              colour_choice = "centered",
-              img_type = "pdf",
-              img_name = "pokedex_completion",
-              show = True,
-              subplot_args = {"figsize" : (24,12)},
-              set_kwargs = {"xlabel" : "Ash Ketchum",
-                            "ylabel" : "Pokemon Caught",
-                            "title"  : "I wanna be, the very best, like NO ONE EVER WAS"}):
+def bars(xvals,
+         yval_matrix,
+         col_labels = None,
+         separation = 0.3,
+         colour_type = "all",
+         colour_choice = "centered",
+         img_type = "pdf",
+         img_name = "pokedex_completion",
+         show = True,
+         subplot_args = {"figsize" : (24,12)},
+         set_kwargs = {"xlabel" : "Ash Ketchum",
+                       "ylabel" : "Pokemon Caught",
+                       "title"  : "I wanna be, the very best, like NO ONE EVER WAS"}):
     """
     =================================================================================================
-    plot_bars(*args, **kwargs)
+    bars(*args, **kwargs)
     
     This function is meant to wrap axes.bars() and provide some of the formatting options for
     barplots
@@ -344,15 +355,10 @@ def plot_bars(xvals,
         # arguments are not arguments in the set() method.
         ax.set(**set_kwargs)
     # Save the figure using the image name and image type
-    plt.savefig(f"{img_name}.{img_type}", bbox_inches = "tight")
-    # If show is True
     if show:
-        # Then show the figure in the terminal.
-        plt.show()
-    #
-    plt.close()
-    # And return None
-    return None
+        plt.savefig(f"{img_name}.{img_type}", bbox_inches = "tight")
+    # If show is True
+    return ax
 
 #
 #
@@ -512,7 +518,8 @@ def make_sigstars(q_list, char = fr"$*$"):
     return [[apply_sigstar(q) for q in col] for col in q_list]
 
 def plot_sigstars(axes,
-                  q_list):
+                  q_list, 
+                  text_dict = {}):
     """
     =================================================================================================
     plot_sigstars(axes, q_list)
@@ -537,7 +544,7 @@ def plot_sigstars(axes,
         for j in range(len(stars[0])):
             # Add text to the axes object at row j, column i.
             axes.text(j,i,stars[i][j], ha = "center",
-                           va = "center", color = "black")
+                           va = "center", color = "black", **text_dict)
     return None
 
 def get_sig_indices(sig_stars_list):
@@ -604,24 +611,28 @@ def sig_filtering(data_list,
         # Return the filtered lists at the end.
         return filt_dlist, filt_ylist, filt_slist
             
-def plot_heatmap(data_list,
-                 xticks = None,
-                 yticks = None,
-                 cmap = "bwr",
-                 bad_color = "grey",
-                 clb_label = "Normalized\nEnrichment\nScore",
-                 heat_title = "I'm a heatmap!!",
-                 significance = None,
-                 sig_filter = False,
-                 show = False,
-                 img_type = 'pdf',
-                 img_name = "im_a_heatmap",
-                 subplot_args = {'figsize' : (12,12)},
-                 colorbar_args = {"shrink" : 0.5,
-                                  "pad"    : 0.08}):
+def heatmap(data_list,
+            xticks = None,
+            yticks = None,
+            cmap = "bwr",
+            bad_color = "grey",
+            clb_label = "Normalized\nEnrichment\nScore",
+            heat_title = "I'm a heatmap!!",
+            remove_spines = False,
+            significance = None,
+            sig_filter = False,
+            save = True,
+            img_type = 'pdf',
+            img_name = "im_a_heatmap",
+            subplot_args = {'figsize' : (12,12)},
+            colorbar_args = {"shrink" : 0.5,
+                             "pad"    : 0.08},
+            textdict = {"fontfamily" : "sans-serif",
+                        "font" : "Arial",
+                        "fontweight" : "bold"}):
     """
     =================================================================================================
-    plot_heatmap(data_list, **kwargs)
+    heatmap(data_list, **kwargs)
     
     This function is meant to craete a heatmap from the input data list using matplotlibs imshow()
     
@@ -639,11 +650,12 @@ def plot_heatmap(data_list,
     significance    ->  A list of significance values
     sig_filter      ->  A boolean that determines whether to filter based on significance
                         and plot the filtered heatmap
-    show            ->  A boolean for whether or not to print the plot from the terminal
+    save            ->  A boolean for whether or not to save the plot
     img_type        ->  A string for the files extension
     img_name        ->  A string with the name for the image
     subplot_args    ->  A dictionary of arguments passed to plt.subplots()
     colorbar_args   ->  A dictionary of arguments to be passed to plt.colorbar()
+    text_dict       ->  A dictionary of arguments to help format text
     
     =================================================================================================
     Returns: None, but a heatmap will be saved.
@@ -675,24 +687,29 @@ def plot_heatmap(data_list,
                      vmax = maxval,
                      aspect = infer_aspect_ratio(xticks,yticks),
                      interpolation = "nearest")
+    if remove_spines:
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
     # Set the title of the plot
-    ax.set_title(heat_title)
+    ax.set_title(heat_title, fontsize = 16, **text_dict)
     # Make the colorbar, passing in the colorbar_args dictionary
     clb = plt.colorbar(heat,
                        **colorbar_args)
     # And set the label of the colorbar.
-    clb.ax.set_title(clb_label)
+    clb.ax.set_title(clb_label, fontsize = 12, **text_dict)
     # Next, set the ticks of the axis in the correct places.
     ax.set_xticks([i for i in range(len(data_arr[0]))])
     ax.set_yticks([i for i in range(len(data_arr))])
     # and if xticks are given
     if xticks != None:
         # Then label the x axis with the xticks
-        ax.set_xticklabels(xticks, rotation = 45, ha = 'right', rotation_mode = "anchor")
+        ax.set_xticklabels(xticks, rotation = 45, ha = 'right', rotation_mode = "anchor", **text_dict)
     # and if yticks are given
     if yticks != None:
         # Then label the y axis with the given labels
-        ax.set_yticklabels(yticks)
+        ax.set_yticklabels(yticks, ha = "right", va = "center", **text_dict)
     # These next commands are meant to help with placement of the xticks and yticks.
     # I admit I do not fully understand what they do.
     tick_spacing = 1
@@ -703,15 +720,12 @@ def plot_heatmap(data_list,
         # Then run the plot_sigstars function passing in the
         # ax object and the significacne list.
         plot_sigstars(ax,
-                      significance)
-    # At this point, the plot should be saved! Wooooooot!
-    plt.savefig(f"{img_name}.{img_type}", bbox_inches = 'tight')
+                      significance,
+                      text_dict)
     # If the user wants to show the plot
-    if show:
+    if save:
         # Then run plt.show() to print it
-        plt.show()
-    #
-    plt.close()
+        plt.savefig(f"{img_name}.{img_type}", bbox_inches = 'tight')
     # This next set of code manages the filtering and replotting event.
     #
     # If the user elects to filter and significance values are given
@@ -723,11 +737,12 @@ def plot_heatmap(data_list,
         # If the lists are empty
         if filt_dlist == []:
             # Then return None, as there is no point in filtering.
-            return None
+            return ax
         # If the filtered lists are not empty,
         else:
+            axes = [ax]
             # Then plot the filtered heatmap
-            plot_heatmap(filt_dlist,
+            new_ax = plot_heatmap(filt_dlist,
                          xticks = xticks,
                          yticks = filt_ylist,
                          cmap = cmap,
@@ -739,15 +754,499 @@ def plot_heatmap(data_list,
                          img_type = img_type,
                          img_name = f"{img_name}_filtered",
                          subplot_args = subplot_args,
-                         colorbar_args = colorbar_args)
-            return None
-    return None
+                         colorbar_args = colorbar_args,
+                         text_dict = text_dict)
+            axes.append(new_ax)
+            return axes
+    return ax
 
 #
 #
 ############################################################################################################
 #
 #
+
+# Make dotplots
+def add_errorbar(mpl_axes, x_pos, y_pos, 
+                 std, color = "grey", x_offset = 0.05, 
+                 transparency = 0.75):
+    """
+    Adds error bars to MatPlotLib axes object. Modifies the mpl_axes input, returns None.
+
+    mpl_axes -> matplotlib axes object
+    x_pos    -> position of the center of the error bars on the x axis
+    y_pos    -> position of the center of the error bars on the y axis
+    std      -> standard deviation of the data (or vertical offset for error bars)
+    color    -> The color of the error bars (Default: "grey")
+    x_offset -> Size of the middle of the error bars (Default: 0.05)
+    """
+    # Plot the vertical middle bar
+    mpl_axes.plot([x_pos, x_pos], [y_pos + std, y_pos - std], color = color, alpha = transparency)
+    # Plot the horizontal middle bar
+    mpl_axes.plot([x_pos - x_offset, x_pos + x_offset], [y_pos, y_pos], color = color, alpha = transparency)
+    # Plot the horizontal top bar
+    mpl_axes.plot([x_pos - 0.75*x_offset, x_pos + 0.75*x_offset], [y_pos + std, y_pos + std], color = color, alpha = transparency)
+    # Plot the horizontal bottom bar
+    mpl_axes.plot([x_pos - 0.75*x_offset, x_pos + 0.75*x_offset], [y_pos - std, y_pos - std], color = color, alpha = transparency)
+    return None
+
+def get_centers(data_matrix, width = 7):
+    """
+    """
+    assert width <= 10, "Width must be between 0 and 10"
+    # Assume the data are labelled
+    data = [[item[0], sorted(item[1], reverse = True)] for item in data_matrix]
+    n = len(data)
+    x_coords = []
+    # Loop over the index of each list
+    for i in range(n):
+        m = len(data[i][1])
+        xi_coords = []
+        # Loop over the number of times width splits the list
+        # Integer division rounds down, so for m in [0,width],
+        # m // width = 0. The +1 tells us to loop once for that group
+        for j in range(m//width + 1):
+            xi_coords += [(i+1) - 0.2 + 0.05*(k) for k in range(width)]
+        x_coords.append(xi_coords[:m])
+    return x_coords, data
+
+def get_data_info(data_matrix, width = 7):
+    bins = len(data_matrix)
+    centers = [i - 0.2 + 0.05 * (width/2) for i in range(1, bins+1)]
+    xs, data = get_centers(data_matrix, width = width)
+    means = [sh.mean(item[1]) for item in data]
+    sds = [sh.standard_deviation(item[1]) for item in data_matrix]
+    sems = [sh.sem(item[1]) for item in data]
+    return {"centers" : centers,
+            "xs"      : xs,
+            "means"   : means,
+            "sds"     : sds,
+            "sems"    : sems}, data
+
+def make_ymax(mpl_axes,
+              labelled_groups):
+    """
+    """
+    current = list(mpl_axes.get_yticks())
+    diff = abs( max(current) - min(current))
+    if 1 <= len(labelled_groups) < 5:
+        return max(current) + 0.3*diff
+    elif 5 <= len(labelled_groups) < 10:
+        return max(current) + 0.45*diff
+    else:
+        return max(current) + 0.6*diff
+
+def make_ymin(mpl_axes,
+              labelled_groups):
+    """
+    """
+    current = list(mpl_axes.get_yticks())
+    diff = abs( max(current) - min(current))
+    if 1 <= len(labelled_groups) < 5:
+        return min(current) - 0.1*diff
+    elif 5 <= len(labelled_groups) < 10:
+        return min(current) - 0.15*diff
+    else:
+        return min(current) - 0.2*diff
+
+def make_ytick_labels(current_ticks, n, numstring = ""):
+    """
+    """
+    new_ticks = []
+    for item in current_ticks:
+        if int(item) == item:
+            new_ticks.append(f"{int(item)}{numstring}")
+        else:
+            new_ticks.append(f"{item:.1f}{numstring}")
+    return new_ticks
+
+def update_yticks(mpl_axes, fontdict = {"fontfamily" : "sans-serif",
+                                         "font" : "Arial",
+                                         "ha" : "right",
+                                         "fontweight" : "bold",
+                                         "fontsize" : "12"}):
+    """
+    """
+    current = mpl_axes.get_yticks()
+    diff = current[-1] - current[0]
+    if 0 < diff < 1000:
+        diff = current[1]-current[0]
+        mpl_axes.set_yticks(current)
+        mpl_axes.set_yticklabels(make_ytick_labels(current, len(current)),
+                                     **fontdict)
+    elif 1000 <= diff <= 999999:
+        diff = current[1]-current[0]
+        mpl_axes.set_yticks([i*(diff) for i in range(len(current))])
+        mpl_axes.set_yticklabels(make_ytick_labels([c/1000 for c in current], len(current), "K"),
+                                     **fontdict)
+    elif 1000000 <= diff:
+        diff = current[1]-current[0]
+        mpl_axes.set_yticks([i*(diff) for i in range(len(current))])
+        mpl_axes.set_yticklabels(make_ytick_labels([c/1000000 for c in current], len(current), "M"),
+                                     **fontdict)
+    return None
+
+def update_xticks(mpl_axes,
+                  xpos,
+                  xlabels,
+                  fontdict = {"fontfamily" : "sans-serif",
+                               "font" : "Arial",
+                               "ha" : "center",
+                               "fontweight" : "bold",
+                               "fontsize" : "12"}):
+    """
+    """
+    mpl_axes.set_xticks(xpos)
+    mpl_axes.set_xticklabels(xlabels, **fontdict)
+    return None
+
+def add_relative_axis(mpl_axes,
+                      rel_data,
+                      data_matrix,
+                      info_dict,
+                      fontdict = {"fontfamily" : "sans-serif",
+                               "font" : "Arial",
+                               "ha" : "left",
+                               "fontweight" : "bold",
+                               "fontsize" : "12"},
+                      ylabel = "Fold Change",
+                      remove_top_spine = True):
+    """
+    """
+    n = len(data_matrix)
+    rel_index = [i for i in range(n) if rel_data in data_matrix[i]]
+    data_scaled = [(item[0], [value / info_dict["means"][rel_index[0]] 
+                              for value in item[1]])
+                   for item in data_matrix]
+    new_y = mpl_axes.twinx()
+    if remove_top_spine:
+        new_y.spines["top"].set_visible(False)
+    ymax = make_ymax(mpl_axes,data_scaled)
+    current_lims = mpl_axes.get_ylim()
+    new_y.set_ylim(current_lims[0] / info_dict["means"][rel_index[0]],
+                   current_lims[1] / info_dict["means"][rel_index[0]])
+    for i in range(n):
+        new_y.scatter(info_dict["xs"][i], data_scaled[i][1], alpha = 0)
+    update_yticks(new_y, fontdict = fontdict)
+    current_lims = mpl_axes.get_ylim()
+    new_y.set_ylim(current_lims[0] / info_dict["means"][rel_index[0]],
+                   current_lims[1] / info_dict["means"][rel_index[0]])
+    new_y.set_ylabel(ylabel,
+                     font = "Arial",
+                     fontsize = 14,
+                     fontweight = "bold",
+                     rotation = 270, va = "baseline")
+    return None
+
+def update_ylims(ymin, ymax, mpl_axes, labelled_groups):
+    if ymin == ymax:
+        ymin = make_ymin(mpl_axes, labelled_groups)
+        ymax = make_ymax(mpl_axes, labelled_groups)
+        mpl_axes.set_ylim(ymin, ymax)
+    elif ymin == None and ymax != None:
+        ymin = make_ymin(mpl_axes, labelled_groups)
+        mpl_axes.set_ylim(ymin, ymax)
+    elif ymin != None and ymax == None:
+        ymax = make_ymax(mpl_axes, labelled_groups)
+        mpl_axes.set_ylim(ymin, ymax)
+    else:
+        mpl_axes.set_ylim(ymin, ymax)
+    return None
+
+def update_ylims(axes, ymin, ymax):
+    current = list(axes.get_ylim())
+    if ymin == ymax and ymin == None:
+        axes.set_ylim(*current)
+        return
+    elif ymin == None and ymax != None:
+        axes.set_ylim(current[0], ymax)
+        return
+    elif ymin != None and ymax == None:
+        axes.set_ylim(ymin, current[1])
+        return
+    else:
+        axes.set_ylim(ymin, ymax)
+        return
+
+def update_xlims(mpl_axes_1, mpl_axes_2):
+    xvals = list(mpl_axes_2.get_xlim())
+    mpl_axes_1.set_xlim(*xvals)
+    return
+
+def plot_id_lines(mpl_axes_1, # Comparison axis
+                  mpl_axes_2, # Dotplot_axis
+                  labelled_data,
+                  centers,  # Center value for each group
+                  heights,  # list of highest comparison for the groups
+                  colours = [],  # list of colours, one per group
+                  plot_kwargs = {"alpha" : 0.5,
+                                 "linestyle" : ":"}): 
+    ax2_max = max(list(mpl_axes_2.get_ylim()))
+    ax1_min = min(list(mpl_axes_1.get_ylim()))
+    n = len(centers)
+    if colours == []:
+        colours = ["grey" for _ in range(n)]
+    for i in range(n):
+        mpl_axes_2.plot([centers[i], centers[i]],
+                        [max(labelled_data[i][1]), ax2_max], colours[i], **plot_kwargs)
+        mpl_axes_1.plot([centers[i], centers[i]],
+                        [ax1_min, heights[i]], colours[i], **plot_kwargs)
+    return None
+
+# Functions to handle comparisons. Comparisons should be a dictionary of groups & pvalues
+# from statistical tests in stats_helpers
+
+# These functions are to format the comparisons such that we can
+#    a) Filter them on significance if desired/required
+#    b) Get the indices of the groups fromt he data
+#    c) Get all of the x positions (centers) using the indices
+
+def format_comps(comp_dict):
+    # Return a list of [group 1, group 2] and [pval]
+    groups = list(zip(comp_dict["Group 1"], comp_dict["Group 2"]))
+    ps = comp_dict["pvalue"]
+    combined = [[sorted(groups[i]), ps[i]] for i in range(len(ps))]
+    return sorted(combined, key = lambda x: x[0][0])
+
+def match_comp_to_data(comp_list, labelled_data):
+    # Return the index for each group in the list
+    inds = []
+    labels = [item[0] for item in labelled_data]
+    for item in comp_list:
+        inds.append([sorted([labels.index(item[0][0]), labels.index(item[0][1])]), item[1]])
+    inds = sorted(inds, key = lambda x: x[0])
+    return inds
+
+def make_xvals(comp_dict,
+               labelled_data,
+               centers,
+               filter_by_alpha = False,
+               alpha = 0.05):
+    comp_list = format_comps(comp_dict)
+    if filter_by_alpha:
+        comp_list = [item for item in comp_list if item[1] < alpha]
+        if len(comp_list) >= 19:
+            return "toomany", "comps", "toplot"
+        filtered = True
+    elif len(comp_list) >= 19:
+        print(f"Too many comparisons provided. Filtering by significance : {alpha}")
+        comp_list = [item for item in comp_list if item[1] < alpha]
+        if len(comp_list) >= 19:
+            return "toomany", "comps", "toplot"
+        filtered = True
+    else:
+        filtered = False
+    data_inds = match_comp_to_data(comp_list, labelled_data)
+    return [[centers[ind[0][0]], centers[ind[0][1]]] for ind in data_inds], [item[1] for item in data_inds], filtered
+
+def make_sigstrings(value_list, sig_dict = {0.05 : "$*$",
+                                            0.01 : "$**$",
+                                            0.001 : "$**$$*$"}):
+    sig_thresholds = list(sig_dict.keys())
+    strings = []
+    for val in value_list:
+        sig = "n.s."
+        for thresh in sig_thresholds:
+            if val < thresh:
+                sig = sig_dict[thresh]
+        strings.append(sig)
+    return strings
+
+def generate_legend_string(p_or_q,
+                           sig_dict,
+                           omit = False):
+    """
+    """
+    # Values in the dict are the representation
+    # Keys in the dict are the cutoff
+    items = list(sig_dict.items())
+    #
+    if omit:
+        string = f"${p_or_q}\geq{items[0][0]}$ omitted\n"
+    else:
+        string = f"{'n.s.':<9}: ${p_or_q}\geq{items[0][0]}$"
+    for item in items:
+        centering = len(item[1]) + 5
+        string = f"{string}\n{item[1]:<10}: ${p_or_q}<{item[0]}$"
+    return string
+    
+
+
+def plot_comparisons(mpl_axes_1,                   # Comparison axes
+                     mpl_axes_2,                   # Dotplot axes
+                     labelled_data,                # 
+                     comp_dict = {},
+                     filter_by_alpha = False,
+                     alpha = 0.05,
+                     centers = [],
+                     colours = [],
+                     sig_dict = {0.05 : "$*$",
+                                 0.01 : "$**$",
+                                 0.001 : "$**$$*$"},
+                     textdict = {"fontfamily" : "sans-serif",
+                                 "font" : "Arial",
+                                 "ha" : "left",
+                                 "va" : "center",
+                                 "fontweight" : "bold"},
+                     return_height = True,
+                     p_or_q = "p"):
+    # Max comparisons hard set to 19, so make the y values for bars and text
+    ys = [[i/19+0.02, i/19+0.02] for i in range(20)]
+    text_y = [(ys[i][0] + ys[i+1][0])/2 for i in range(19)]
+    # Handle anovas
+    if comp_dict["id"][0] == "ANOVA":
+        comp_dict["Group 1"] = [labelled_data[0][0]]
+        comp_dict["Group 2"] = [labelled_data[-1][0]]
+    # Need the xvalues for the bars and comparisons
+    xs, pvals, filtered = make_xvals(comp_dict, labelled_data, 
+                           centers, filter_by_alpha = filter_by_alpha,
+                           alpha = alpha)
+    if xs == "toomany":
+        return None, None
+    text_x = [sh.mean(item) for item in xs]
+    # Make the significance strings
+    pvals = make_sigstrings(pvals)
+    # Keep track of the heights
+    heights = {}
+    maxtext = 0
+    # Now we should be able to plot comparisons
+    for i in range(len(xs)):
+        mpl_axes_1.plot(xs[i], ys[i], color = "black", alpha = 0.5)
+        mpl_axes_1.text(text_x[i], text_y[i], pvals[i], **textdict)
+        # Update heights
+        heights[xs[i][0]] = ys[i][0]
+        heights[xs[i][1]] = ys[i][1]
+        maxtext = text_y[i]
+    # Turn the heights into a list
+    if comp_dict["id"][0] == "ANOVA":
+        heights = [ys[0][0] for _ in range(len(labelled_groups))]
+    else:
+        heights = sorted([[key, value] for key, value in heights.items()], key = lambda x: x[0])
+        heights = [item[1] for item in heights]
+    plot_id_lines(mpl_axes_1, mpl_axes_2, labelled_data, centers, heights, colours = colours)
+    if filtered:
+        string = generate_legend_string(p_or_q, sig_dict, omit = True)
+        #string = f"Test : {comp_dict['id'][0]}\n\n${p_or_q}\geq0.05$ omitted\n$*$     : $p < 0.05$\n$**$   : $p<0.01$\n$**$$*$ : $p<0.001$"
+    else:
+        string = generate_legend_string(p_or_q, sig_dict)
+        #string = f"Test : {comp_dict['id'][0]}\n\nn.s.   : $p\geq 0.05$\n$*$       : $p < 0.05$\n$**$    : $p<0.01$\n$**$$*$   : $p<0.001$"
+    handles, labels = mpl_axes_1.get_legend_handles_labels()
+    handles.append(Patch(color="none", label = string))
+    if return_height:
+        return maxtext, handles
+    else:
+        return None, handles
+
+def dotplot(labelled_groups,
+            foldchange_axis = False,
+            foldchange_group = None,
+            comparisons = {},        # Args for plot_comparisons
+            filename = "dotplot.pdf",
+            save_file = True,
+            colours = [],
+            title = "Dotplot",
+            xlabel = "",
+            ylabel = "Abundance",
+            ymin = None,
+            ymax = None,
+            errorbar = "sem",
+            filter_by_alpha = False,
+            alpha = 0.05, 
+            sig_dict = {0.05 : "$*$",
+                        0.01 : "$*$$*$",
+                        0.001 : "$*$$*$$*$"},
+            p_or_q = "p"):
+    assert errorbar.lower() in ["sem", "sd"], "The accepted errorbar settings are Standard Error of the Mean (sem) or Standard Deviation (sd)"
+    global tab_colours
+    if type(colours) == str:
+        colours = handle_colours(colours, len(labelled_groups), choice = "random")
+        print(f"Colours chosen: {colours}")
+    #
+    info_dict, groups = get_data_info(labelled_groups)
+    #
+    fig, ax = plt.subplots(2,1,sharex = True, figsize = (2*len(labelled_groups), 10))
+    #
+    nrow = 2
+    ncol = 1
+    #
+    gs = gridspec.GridSpec(nrow,ncol,
+         wspace=0.0, hspace=0.0, 
+         top=1.-0.5/(nrow+1), bottom=0.5/(nrow+1), 
+         left=0.5/(ncol+1), right=1-0.5/(ncol+1)) 
+    #
+    ax1 = plt.subplot(gs[0])
+    ax1.set_ylim(0,1)
+    ax1.axis("off")
+    #
+    ax2 = plt.subplot(gs[1])
+    ax2.spines["right"].set_visible(False)
+    #
+    for i in range(len(groups)):
+        if colours == []:
+            ax2.scatter(info_dict["xs"][i], groups[i][1], edgecolors = "black")
+        elif colours != []:
+            ax2.scatter(info_dict["xs"][i], groups[i][1], edgecolors = "black", color = colours[i])
+        if errorbar.lower() == "sem":
+            add_errorbar(ax2, info_dict["centers"][i], info_dict["means"][i], info_dict["sems"][i])
+        else:
+            add_errorbar(ax2, info_dict["centers"][i], info_dict["means"][i], info_dict["sds"][i])
+    # Axes related updates
+    update_ylims(ax2, ymin, ymax)
+    update_xlims(ax1,ax2)
+    update_yticks(ax2)
+    update_xticks(ax2, info_dict["centers"], [item[0] for item in groups])
+    if foldchange_axis and foldchange_group != None:
+        add_relative_axis(ax2, foldchange_group, groups, info_dict)
+    ax2.set_xlabel(xlabel, **{"fontfamily" : "sans-serif",
+                               "font" : "Arial",
+                               "ha" : "center",
+                               "fontweight" : "bold",
+                               "fontsize" : "14"})
+    ax2.set_ylabel(ylabel, **{"fontfamily" : "sans-serif",
+                               "font" : "Arial",
+                               "ha" : "center",
+                               "fontweight" : "bold",
+                               "fontsize" : "14"})
+    # If comparisons are provided, plot them unless there are too many.
+    if comparisons != {}:
+        if colours == []:
+            title_height, handles = plot_comparisons(ax1, ax2, groups, comparisons,
+                                                     filter_by_alpha = filter_by_alpha, alpha = alpha,
+                                                     centers = info_dict["centers"],
+                                                     colours = tab_colours, sig_dict = sig_dict,
+                                                     p_or_q = p_or_q)
+        else:
+            title_height, handles = plot_comparisons(ax1, ax2, groups, comparisons,
+                                                     filter_by_alpha = filter_by_alpha, alpha = alpha,
+                                                     centers = info_dict["centers"],
+                                                     colours = colours, sig_dict = sig_dict,
+                                                     p_or_q = p_or_q)
+        if title_height != handles:
+            ax1.text(sh.mean(list(ax1.get_xlim())), title_height + 0.1,
+                     title, **{"fontfamily" : "sans-serif",
+                               "font" : "Arial",
+                               "ha" : "center",
+                               "fontweight" : "bold",
+                               "fontsize" : "16"})
+            ax1.legend(handles = handles, loc = "center right", 
+                       bbox_to_anchor = (0,0.5),
+                       frameon = False)
+        else:
+            ax2.set_title("title", **{"fontfamily" : "sans-serif",
+                                  "font" : "Arial",
+                                  "ha" : "center",
+                                  "fontweight" : "bold",
+                                  "fontsize" : "16"})
+    else:
+        ax2.set_title(title, **{"fontfamily" : "sans-serif",
+                                  "font" : "Arial",
+                                  "ha" : "center",
+                                  "fontweight" : "bold",
+                                  "fontsize" : "16"})
+    ax2.spines["top"].set_visible(False)
+    if save_file:
+        plt.savefig(filename)
+    return ax
 
 
 

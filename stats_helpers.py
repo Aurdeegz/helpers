@@ -48,7 +48,7 @@ from scipy.stats import studentized_range as q
 from scipy.interpolate import splrep, splev           # Used for Storey Q-value estimation, fitting cubic spline
 from scipy.interpolate import UnivariateSpline
 
-import general_helpers as gh
+from . import general_helpers as gh
 
 print(f"numpy        {np.__version__}")
 print(f"scipy         {scipy.__version__}")
