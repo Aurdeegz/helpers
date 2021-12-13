@@ -1,0 +1,9 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+src/helpers_kendeegz.egg-info/PKG-INFO
+src/helpers_kendeegz.egg-info/SOURCES.txt
+src/helpers_kendeegz.egg-info/dependency_links.txt
+src/helpers_kendeegz.egg-info/top_level.txt
