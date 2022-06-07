@@ -2,8 +2,9 @@
 =================================================================================================
 Kenneth P. Callahan
 
-9 July 2021
-                  
+Original Creation Date: 9 July 2021
+Update 1: 6 June 2022
+
 =================================================================================================
 Python >= 3.8.5
 
@@ -48,6 +49,40 @@ import copy
 #
 ######################################################################################################
 #
+# 
+
+def remove_chars(string, remove = ["(", ")", "."] + [str(i) for i in range(10)]):
+    """
+    =================================================================================================
+    remove_chars(string, remove)
+    
+    This function takes a string and returns the string with the specific characters removed.
+    
+    =================================================================================================
+    Arguments:
+    
+    string -> A string that you would like to modify.
+    remove -> A list of strings that will be removed from the string input.
+    
+    =================================================================================================
+    Returns: A string
+    =================================================================================================
+    """
+    # Initialize the new string
+    newstr = ""
+    # Loop over the characters in the input string
+    for char in string:
+        # and if the character is not in the list to remove
+        if char not in remove:
+            # then update the new string with that character
+            newstr = f"{newstr}{char}"
+    # And return the new string at the end.
+    return newstr
+
+#
+#
+######################################################################################################
+#
 #     Random Functions that I can't decide where they belong
 
 def read_file(filename,
@@ -73,7 +108,7 @@ def read_file(filename,
     # Open the file
     with open(filename, "r") as f:
         # and stip the lines, and split the lines on the delimiter
-        lines = [line.strip().split(delim) for line in f]
+        lines = [line.rstrip("\n").split(delim) for line in f]
         # Close the file
         f.close()
     # and return the lines of the file
@@ -650,6 +685,272 @@ def list_to_str(a_list,
         # Then simply return the newstr variable
         return newstr
 
+def filter_matrix(a_matrix, header, value, keep, head_loc = 0, compare = "=="):
+    """
+    =================================================================================================
+    filter_matrix(a_matrix, headere, value, keep, head_loc, compare)
+    
+    Given a matrix (a list of lists, where each sublist is a row), filter the matrix  based
+    on the value in a specific column and the given comparison.
+    =================================================================================================
+    Arguments:
+    
+    a_matrix -> A list of lists, where each sublist is a row of a matrix
+    header   -> A string which is a header in the given matrix
+    value    -> An object that you wish to filter the matrix based on.
+    keep     -> A boolean which determines whether to keep the row with the given value or 
+                remove the row with the given value
+    head_loc -> An integer describing the position of the header row in the matrix (default 0)
+    compare  -> A string defining the type of comparison used to determine filtering (default "==")
+    =================================================================================================
+    Returns: A matrix with some rows removed and the headers in row 0
+    =================================================================================================
+    """
+    # Get the row containing the headers
+    headers = a_matrix[head_loc]
+    # and make a new matrix without the header row
+    new_matrix = [item for item in a_matrix if item != headers]
+    # Then get the column position of the column to filter on
+    head_pos = headers.index(header)
+    # Next, check the keep and compare values, then filter the matrix accordingly
+    if keep and compare == "==":
+        return [headers] + list(filter(lambda x: x[head_pos] == value,new_matrix))
+    elif keep and compare == ">":
+        return [headers] + list(filter(lambda x: x[head_pos] > value,new_matrix))
+    elif keep and compare == ">=":
+        return [headers] + list(filter(lambda x: x[head_pos] >= value,new_matrix))
+    elif keep and compare == "<":
+        return [headers] + list(filter(lambda x: x[head_pos] < value,new_matrix))
+    elif keep and compare == "<=":
+        return [headers] + list(filter(lambda x: x[head_pos] <= value,new_matrix))
+    elif keep and compare == "in":
+        return [headers] + list(filter(lambda x: x[head_pos] in value,new_matrix))
+    elif keep and compare == "not in":
+        return [headers] + list(filter(lambda x: x[head_pos] not in value,new_matrix))
+    elif not keep and compare == ">":
+        return [headers] + list(filter(lambda x: x[head_pos] <= value,new_matrix))
+    elif not keep and compare == ">=":
+        return [headers] + list(filter(lambda x: x[head_pos] < value,new_matrix))
+    elif not keep and compare == "<":
+        return [headers] + list(filter(lambda x: x[head_pos] >= value,new_matrix))
+    elif not keep and compare == "<=":
+        return [headers] + list(filter(lambda x: x[head_pos] > value,new_matrix))
+    elif not keep and compare == "in":
+        return [headers] + list(filter(lambda x: x[head_pos] not in value,new_matrix))
+    elif not keep and compare == "not in":
+        return [headers] + list(filter(lambda x: x[head_pos] in value,new_matrix))
+    else:
+        return [headers] + list(filter(lambda x: x[head_pos] != value,new_matrix))
+
+def select_cols(a_matrix, head_dict, head_loc = 0):
+    """
+    =================================================================================================
+    select_cols(a_matrix, head_dict, head_loc)
+    
+    This fucntion takes a list of lists (a_matrix), a dictionary of keys which are headers in 
+    the input matrix and values that are the new headers in the output matrix, and an integer
+    defining the row-position of the headers.
+    =================================================================================================
+    Arguments:
+    
+    a_matrix  -> a list of lists, where each sublist is a row in the matrix.
+    head_dict -> a dictionary with keys as the current headers that will be kept, and values are
+                 the new headers used in the return matrix
+    head_loc  -> an integer defining the row position of the header row
+    =================================================================================================
+    """
+    # Get the row containing the headers
+    headers = a_matrix[head_loc]
+    # Get the column indices for each header that will be retained
+    head_inds = [headers.index(head) for head in list(head_dict.keys())]
+    # Transform the matrix to be column-oriented
+    matrix = transpose(*a_matrix)
+    # Initialize a new matrix
+    new_matrix = []
+    # Loop over the indices of columns to keep
+    for i in head_inds:
+        # and append those columns to the new_matrix, replacing the current header with the new header
+        new_matrix.append([head_dict[headers[i]]] + [row for row in matrix[i] if row != headers[i]])
+    # and return the new matrix transformed to be row oriented.
+    return transpose(*new_matrix)
+
+def replace_value(a_list, value, newvalue):
+    """
+    =================================================================================================
+    replace_value(a_list, value, newvalue)
+    
+    A function that takes a list, a specific value that will be replaced, a new value that will replcae
+    value.
+    =================================================================================================
+    Arguments:
+    
+    a_list    -> A list
+    value     -> an object that could be in the list
+    newvalue  -> an object that will replace 'value' if found in the list
+    =================================================================================================
+    returns: A new list where each 'value' found is replaced by 'newvalue'
+    =================================================================================================
+    """
+    # Initialize a new list
+    new_list = []
+    # and loop over the items in the input list
+    for item in a_list:
+        # If the item and the value argument are the same
+        if item == value:
+            # Then add the new value
+            new_list.append(newvalue)
+        # Otherwise, add the item to the new_list
+        else:
+            new_list.append(item)
+    # and return the new list
+    return new_list
+
+def grab_col(a_matrix, head, head_loc = 0):
+    """
+    =================================================================================================
+    grab_col(a_matrix, head, head_loc)
+    
+    A function that takes a list of lists, a header string, and an integer describing the row
+    location of the headers and returns a list containing the column
+    =================================================================================================
+    Arguments:
+    
+    a_matrix  -> a list of lists
+    head      -> a string defining the column to be grabbed
+    head_loc  -> an integer defining the row location of the headers
+    =================================================================================================
+    Returns: the desired column of the matrix, as a list
+    =================================================================================================
+    """
+    # Get the index of the column
+    head_ind = a_matrix[head_loc].index(head)
+    # And return the column as a lsit with the header in position 0
+    return [head] + [row[head_ind] for row in a_matrix if row[head_ind] != head]
+    
+def add_col(a_matrix, newhead, newval = [],
+            head_loc = 0, newhead_pos = 0):
+    """
+    =================================================================================================
+    add_col(a_matrix, newhead, newval, head_loc, newhead_pos)
+    
+    This function serves to add a new column to an existing matrix in a specified position.
+    =================================================================================================
+    Arguments:
+    
+    a_matrix    -> a list of lists
+    newhead     -> a string that will be the new header for the column
+    newval      -> a list that contains the new values for the matrix
+    head_loc    -> an integer defining the position of the headers row
+    newhead_pos -> the index for the new column to be added to
+    =================================================================================================
+    Returns: a matrix with a new column added
+    =================================================================================================
+    """
+    # Check to see whether or not the newval argument is of the proper size
+    if newval != []:
+        assert len(newval) == len(a_matrix)-1, f"The new column should have length {len(a_matrix)-1}"
+    # Otherwise, newval is an empty list, so fill it in with empty strings
+    else:
+        newval = ["" for _ in range(len(a_matrix)-1)]
+    # Then update the headers of the matrix
+    if newhead_pos == -1:
+        heads = a_matrix[head_loc] + [newhead]
+    else:
+        heads = a_matrix[head_loc][:newhead_pos+1] + [newhead] + a_matrix[head_loc][newhead_pos:]
+    # Initialize the newmatrix with the headers list
+    newmatrix = [heads]
+    # and create a matrix that does not include the headers
+    nohead = [row for row in a_matrix if a_matrix.index(row) != head_loc]
+    # Then, loop over the rows of the matrix
+    for i in range(len(nohead)):
+        # and update the rows with the new column values
+        if newhead_pos == -1:
+            newrow = nohead[i] + [newval[i]]
+        else:
+            newrow = nohead[i][:newhead_pos+1] + [newval[i]] + nohead[i][newhead_pos:]
+        newmatrix.append(newrow)
+    # Then return the newmatrix with the column added.
+    return newmatrix
+
+def transform_values(a_list, transform = float):
+    """
+    =================================================================================================
+    transform_values(a_list, tranform)
+    
+    Given a list of values and an object type transforming function, return the list with
+    all possible values tranformed.
+    =================================================================================================
+    Arguments:
+    
+    a_list    -> A list of values
+    transform -> A type transforming function (default float)
+    =================================================================================================
+    Returns: a list with all possible values type transformed.
+    =================================================================================================
+    """
+    # Initialize a new list
+    new_list = []
+    # Loop over th eitems in the input list
+    for item in a_list:
+        # And attempt to transform the item and update the newlist
+        try:
+            new_list.append(transform(item))
+        # If this fails, then simply add the item to the newlist
+        except:
+            new_list.append(item)
+    # At the end, return the new list.
+    return new_list
+
+#
+#
+######################################################################################################
+#
+#  Functions relating to dictionaries
+
+def bin_by_col(a_matrix, id_col, head_row = 0):
+    """
+    =================================================================================================
+    binbycol(a_matrix, id_col, head_row)
+    
+    This function takes a matrix (a list of lists), the string defining the column of interest, and
+    the row index of the headers and returns a dictionary where the keys are the unique elements of
+    the column of interest and the values are matrices containing the rows of 
+    
+    =================================================================================================
+    Arguments:
+    
+    a_matrix -> A list of lists
+    id_col   -> A string that is the header for the column of interest
+    head_row -> An integer defining the row containing the headers
+    =================================================================================================
+    Returns: A dictionary of matrices
+    
+    =================================================================================================
+    """
+    # Grab the headers of the matrix
+    headers = a_matrix[head_row]
+    # and initialise the dictionary to hold the output
+    parsed = {}
+    # Initialise a counter variable
+    i = 0
+    # Loop over the rows in the matrix
+    for item in a_matrix:
+        # and skip the headers row, as it will be added back later
+        if item == headers:
+            continue
+        # If the current item in the column is not yet in the new dictionary
+        elif item[id_col] not in parsed.keys():
+            # then update the dictionary with this new key, and add the row to the dictionary
+            parsed[item[id_col]] = [item]
+        # Otherwise we have already seen this value
+        else:
+            # So simply add this row to the growing matrix
+            parsed[item[id_col]].append(item)
+        # and update the counter variable
+        i+=1
+    # Finally return the dictionary with the headers in position zero of each key:matrix 
+    return {key : [headers] + value for key, value in parsed.items()}
+
 #
 #
 ######################################################################################################
@@ -707,8 +1008,8 @@ def get_file_list(directory,
                                true_file = true_file) for path in dirpaths]
         # At the end, unpack the lsit of files
         return unpack_list(files)
-    
-    
+
+
 #
 #
 ######################################################################################################

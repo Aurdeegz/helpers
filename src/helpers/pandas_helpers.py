@@ -30,6 +30,11 @@ print(f"Loading the module: helpers.pandas_helpers\n")
 #
 #     Importables
 
+from pathlib import Path
+help_path = Path(__file__).parent.absolute()
+import sys
+sys.path.insert(0,help_path)
+
 # This module is used for unix-like string matching,
 # namely WildCard notation (*string*).
 import fnmatch
@@ -48,17 +53,17 @@ import numpy as np
 # SciPy, so I coded some statistics. There also is no
 # standard module for applying the Storey method for
 # q-value estimation, so I coded that as well.
-from . import stats_helpers as hs
+import stats_helpers as hs
 
 # General helpers has a number of functions I use frequently in
 # my scripts. They are all placed in that module purely for
 # convenience and generalizability.
-from . import general_helpers as gh
+import general_helpers as gh
 
 # Argcheck helpers has functions that I use to check the
 # validity of arguments in functions, since Python is
 # weakly typed.
-from . import argcheck_helpers as ah
+import argcheck_helpers as ah
 
 print(f"pandas        {pd.__version__}")
 print(f"numpy         {np.__version__}\n")

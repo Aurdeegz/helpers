@@ -3,7 +3,7 @@
 Kenneth P. Callahan
 
 9 July 2021
-                  
+
 =================================================================================================
 Python >= 3.8.5
 
@@ -13,7 +13,7 @@ This module contains functions that help with argument checking. Currently, they
 type-checking and path checking functions.
 
 As I need to check more things, I will put the functions here.
-   
+
 =================================================================================================
 Dependencies:
 
@@ -45,19 +45,19 @@ def check_delim(argument,
     """
     =================================================================================================
     check_delim(argument, default)
-    
+
     This function is used to check file delimiters. Most files I see are tab delimited, hence
     the default being tab.
-                  
+
     =================================================================================================
     Arguments:
-    
+
     argument  ->  A string holding a (potential) delimiter
     defualt   ->  A string determining the default delimiter
-    
+
     =================================================================================================
     Returns: The delimiter, after checking that it is a valid delimiter.
-    
+
     =================================================================================================
     """
     # Assert thhat the argument is in the list of accepted arguments.
@@ -88,19 +88,19 @@ def check_existence(argument,
     """
     =================================================================================================
     check_existence(argument, error)
-    
+
     This function is meant to check the existence of a given path.
-    
+
     =================================================================================================
     Arguments:
-    
+
     argument  ->  A string containing a potential path
     error     ->  A string containing an error message, presented to the user if the path
                   does not exist.
-    
+
     =================================================================================================
     Returns: The full path of the argument, or an error if the path does not exist.
-    
+
     =================================================================================================
     """
     # Ensure that the argument exists, otherwise raise an error
@@ -117,21 +117,21 @@ def check_extension(argument,
     """
     =================================================================================================
     check_extension(argument, desired_exts, error)
-    
+
     This function is used to check whether a given filename has a proper extension.
-    
+
     =================================================================================================
     Arguments:
-    
+
     argument      ->  A string containing a file name (and possibly the path to the file)
     desired_exts  ->  A list of strings containing the allowable extensions, no periods are required.
     error         ->  A string containing an error message.
     exists        ->  A boolean that determines whether to check the path for existence
-    
+
     =================================================================================================
     Returns:  The full path of the argument, or an error if the path does not exist or the extension
               is invalid.
-    
+
     =================================================================================================
     """
     # Split the arugment on the period, and take the last element
@@ -155,21 +155,21 @@ def check_dir(argument,
     """
     =================================================================================================
     check_dir(argument, create, error)
-    
+
     This function is used to check for the existence of the argument, and whether or not to create
     the argument in the event the directory does not exist.
-    
+
     =================================================================================================
     Arguments:
-    
+
     argument  ->  A string contating the path to a directory
     create    ->  A boolean determining whether or not to create the directory, in the event it
                   does not exist.
     error     ->  A string containing an error message.
-    
+
     =================================================================================================
     Returns: The argument after checking whether or not it exists and creating it if it did not.
-    
+
     =================================================================================================
     """
     # If the path exists
@@ -187,7 +187,7 @@ def check_dir(argument,
         # print the error and return the argument.
         print(error)
         return argument
-    
+
 def check_filename(argument,
                    extension = "txt",
                    default = "im_a_file",
@@ -195,20 +195,20 @@ def check_filename(argument,
     """
     =================================================================================================
     check_filename(argument, extension, default, path)
-    
+
     This function is meant to check a filename for validity, given the kwargs.
-    
+
     =================================================================================================
     Arguments:
-    
+
     argument    ->  A string containing a file name (with no path information)
     extensions  ->  A string containing the desired extension
     default     ->  A string containing the default name, in the event something goes wrong
     path        ->  A path that the file should be appended to.
-    
+
     =================================================================================================
     Returns: The filename with the extension, or the filename with the extension and the path.
-    
+
     =================================================================================================
     """
     # If no path information is provided
@@ -257,19 +257,19 @@ def check_type(argument,
     """
     =================================================================================================
     check_type(argument, ob_type, error)
-    
+
     This function is meant to check the type of an argument.
-    
+
     =================================================================================================
     Arguments:
-    
+
     argument  ->  Literally anything you want to check, as long as you know the expected type(s)
     ob_type   ->  An expected type, or a list of expected types
     error     ->  A string containing an error message, in the event something goes wrong.
-    
+
     =================================================================================================
     Returns: The input argument after checking the validity of the type.
-    
+
     =================================================================================================
     """
     # If multiple object types are provided
@@ -282,7 +282,7 @@ def check_type(argument,
         assert type(argument) == ob_type, error
     # If all checks out, return the argument.
     return argument
-    
+
 #
 #
 ######################################################################################################

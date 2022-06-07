@@ -7,11 +7,16 @@ File for plotting LI-COR Odyssey CLx Western data.
 #
 #
 
+from pathlib import Path
+help_path = Path(__file__).parent.absolute()
+import sys
+sys.path.insert(0,help_path)
+
 import pandas as pd
 
-from . import stats_helpers as sh
+import stats_helpers as sh
 
-from . import mpl_plotting_helpers as mph
+import mpl_plotting_helpers as mph
 
 #
 #

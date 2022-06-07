@@ -33,6 +33,11 @@ print(f"Loading the module: helpers.{os.path.basename(__file__)}\n")
 #
 #   Importables
 
+from pathlib import Path
+help_path = Path(__file__).parent.absolute()
+import sys
+sys.path.insert(0,help_path)
+
 import fnmatch                                        # Unix-like string searching
 
 import pandas as pd                                   # General use for data
@@ -48,7 +53,9 @@ from scipy.stats import studentized_range as q
 from scipy.interpolate import splrep, splev           # Used for Storey Q-value estimation, fitting cubic spline
 from scipy.interpolate import UnivariateSpline
 
-from . import general_helpers as gh
+from random import normalvariate, randint, seed
+
+import general_helpers as gh
 
 print(f"numpy        {np.__version__}")
 print(f"scipy         {scipy.__version__}")
@@ -144,27 +151,132 @@ def filter_nan_dict(data,
     # Return the filtered dictionary.
     return filtered_dict
 
-def count_list(dataset): 
-    '''
-    Given a dataset, count the occurence of
-    each data point and return them as a dictionary. 
-    '''
-    # First we create a dictionary to hold the counts. 
-    # We then loop over the elements of the dataset
-    # and attempt to check the dictionary keys for them.
-    # If the element has appeard, we add one to the count
-    # and if the element is not in the dictionary, we 
-    # add a key to the dictionary with that elements name 
-    # and initialize it to 1 (since we have seen it once). 
-    # At the end, return the dictionary. 
-    dic = {}                          # Create the empty dictionary
-    for element in dataset:           # Loop over the elemnts in the dataset
-        try:                          # Attempt
-            dic[str(element)] +=  1   # Look for the key of the element, add one to count
-        except:                       # Otherwise 
-            dic[str(element)] = 1     # Add a key to the dicitonary with value 1
-    return dic                        # Return the dictionary
+def remove_nanpairs(d1,d2):
+    pairs = list(zip(d1,d2))
+    pairs = [list(pair) for pair in pairs if pair[0] == pair[0] and pair[1] == pair[1]]
+    return list(zip(*pairs))
 
+def valid_val_filt(a_matrix,
+                   group_inds = [],
+                   threshold = 3,
+                   any_or_all = any):
+    assert type(group_inds) == list, "Fuck you"
+    assert bool(group_inds) == True, "Fuuuuuuuuuck you"
+    assert any_or_all in [any,all], "Super fuck youuuuu"
+    bool_matrix = [any_or_all([len([item[num] for num in group if item[num] == item[num]])>= threshold 
+                        for group in group_inds]) for item in a_matrix]
+    return [a_matrix[i] for i in range(len(a_matrix)) if bool_matrix[i]]
+
+def apply_func(a_matrix, func):
+    newmatrix = []
+    for row in a_matrix:
+        newrow = []
+        for item in row:
+            try:
+                func(item)
+            except:
+                newrow.append(item)
+            else:
+                newrow.append(func(item))
+        newmatrix.append(newrow)
+    return newmatrix
+
+#
+#
+#######################################################################################################
+#
+#    Imputing missing values
+
+def impute_list(a_list, function, parameters = [], replace = float("nan")):
+    """
+    Look for nans, replace using function with parameters
+    """
+    newlist = []
+    for item in a_list:
+        if item != item or str(item) == str(replace):
+            newlist.append(function(*parameters))
+        else:
+            newlist.append(item)
+    return newlist
+
+def total_impute(data, matrix, col_ids = [],
+                 width = 0.3, shift = 1.8, r_seed = 1):
+    seed(r_seed)
+    t_data = unpack_list(data[1:])
+    t_data = [d for d in t_data if d == d]
+    data_mean = mean(t_data)
+    data_sd = standard_deviation(t_data)
+    n_mean = data_mean - shift*data_sd
+    n_sd = width * data_sd
+    data = [[str(item) for item in row] for row in data]
+    print(f"\tSampling from Normal distribution with mean {n_mean:.3f} and")
+    print(f"\tstandard deviation {n_sd:.3f} to replace nans\n")
+    i_data = [impute_list(item, normalvariate, parameters = [n_mean,n_sd]) for item in data]
+    i_data = [gh.transform_values(item) for item in i_data]
+    newmatrix = copy.copy(matrix)
+    imputed = [[] for i in col_ids]
+    for row in range(1,len(newmatrix)):
+        for col in col_ids:
+            newmatrix[row][col] = i_data[row][col_ids.index(col)]
+            if str(i_data[row][col_ids.index(col)]) != data[row][col_ids.index(col)]:
+                imputed[col_ids.index(col)].append(i_data[row][col_ids.index(col)])
+    return newmatrix, imputed, r_seed
+            
+def col_impute(data, matrix, col_ids = [],
+               width = 0.3, shift = 1.8):
+    data = gh.transpose(*data)
+    c_data = [[d for d in col[1:] if d == d] for col in data]
+    c_means = [mean(col) for col in c_data]
+    c_sds = [standard_deviation(col) for col in data]
+    n_means = [c_mean[i] - shift*c_sds[i] for i in range(len(c_means))]
+    n_sds = [width*sd for sd in c_sds]
+    data = [[str(item) for item in col] for col in data]
+    data = [gh.replace_values(data[i], "nan", normalvariate(n_means[i], n_sds[i])) for i in range(len(data))]
+    data = gh.transpose(*data)
+    data = [gh.transform_values(item) for item in data]
+    newmatrix = copy.copy(matrix)
+    for row in range(1, len(newmatrix)):
+        for col in col_ids:
+            newmatrix[row][col] = data[row][col_ids.index(col)]
+    return newmatrix
+
+def group_impute(data, matrix, col_ids = [],
+                width =0.3, shift = 1.8):
+    assert False, "Under development"
+    return None
+
+def row_impute(data, matrix, col_ids = [],
+                width =0.3, shift = 1.8):
+    assert False, "Under development"
+    return None
+
+def impute_matrix(a_matrix, style = "total", col_ids = [], grouped = False,
+                  width = 0.3, shift = 1.8, r_seed = "random"):
+    # First, we need to isolate the data
+    if not grouped:
+        col_ids = gh.unpack_list(col_ids)
+    if r_seed == "random":
+        print("\tPicking a random seed for imputation...")
+        r_seed = randint(1,100000)
+        print(f"\tNew seed is {r_seed}...\n")
+    else:
+        print(f"\tUser defined seed of {r_seed} for imputation...\n")
+    data = [[item[i] for i in col_ids] for item in a_matrix]
+    if style == "total":
+        return total_impute(data, a_matrix, col_ids = col_ids,
+                           width = width, shift = shift, r_seed = r_seed)
+    elif style == "col":
+        assert False, "Under development"
+        return col_impute(data, a_matrix, col_ids = col_ids,
+                           width = width, shift = shift)
+    elif style == "row":
+        return row_impute(data, a_matrix, col_ids = col_ids,
+                           width = width, shift = shift)
+    elif style == "group":
+        return group_impute(data, a_matrix, col_ids = col_ids,
+                           width = width, shift = shift)
+    else:
+        assert 1==2, "bad"
 
 #
 #
@@ -172,13 +284,20 @@ def count_list(dataset):
 #
 #    General Statistical Functions
 
-def mean(dataset):
+def mean(dataset, filter_nans = True, threshold = 1):
     '''
     Given a dataset, return the average value.
     '''
-    return sum(dataset) / len(dataset)
+    if filter_nans:
+        data = [d for d in dataset if d == d]
+    else:
+        data = [d for d in dataset]
+    if len(data) >= threshold:
+        return sum(data) / len(data)
+    else:
+        return float("nan")
 
-def median(dataset):
+def median(dataset, filter_nans = True):
     '''
     Given a dataset, return the median value.
     '''
@@ -188,14 +307,21 @@ def median(dataset):
     # find the average of the two middle numbers. If the 
     # number of datapoints is odd, then we simply need
     # to find the middle one. They also need to be sorted.
-    dataset = sorted(dataset)
-    if len(dataset) % 2 == 0:                            # if the dataset is even
-        index = len(dataset) // 2                        # get the middle data point
-        med = (dataset[index] + dataset[index -1]) / 2   # average the middle two points
-        return med                                       # return this value
-    elif len(dataset) % 2 == 1:                          # if the dataset is odd
-        index = len(dataset) // 2                        # get the middle point
-        return dataset[index]                            # return the middle point
+    if filter_nans:
+        data = sorted([d for d in dataset if d == d])
+    else:
+        data = sorted(dataset)
+    if len(data) == 0:
+        return float("nan")
+    elif len(data) == 1:
+        return data[0]
+    elif len(data) % 2 == 0:                            # if the dataset is even
+        index = len(data) // 2                        # get the middle data point
+        med = (data[index] + data[index -1]) / 2      # average the middle two points
+        return med                                    # return this value
+    elif len(data) % 2 == 1:                          # if the dataset is odd
+        index = len(data) // 2                        # get the middle point
+        return data[index]                            # return the middle point
 
 def grand_mean(*data):
     all_data = gh.unpack_list(data)
@@ -207,7 +333,7 @@ def demean(data, grand = False):
     else:
         return [mean(d) - grand_mean(data) for d in data]
 
-def variance(dataset, correction = 1): 
+def variance(dataset, correction = 1, threshold = 2): 
     '''
     Given a dataset, calculate the variance of the 
     parent population of the dataset. 
@@ -217,11 +343,13 @@ def variance(dataset, correction = 1):
     # those squares divided by the number of 
     # datapoints minus 1. 
     meanless = demean(dataset)          # Remove the mean from the data
+    if len(meanless) < threshold:
+        return float("nan")
     squares = [x**2 for x in meanless]       # Square all of the meanless datapoints
     return sum(squares) / (len(dataset) - correction) # return the sum of the squares divided by n-1
 
-def standard_deviation(data, correction = 1):
-    return sqrt(variance(data, correction = correction))
+def standard_deviation(data, correction = 1, threshold = 2):
+    return sqrt(variance(data, correction = correction, threshold = threshold))
 
 def sem(data, correction = 1):
     if len(data) < 2:
@@ -499,6 +627,67 @@ def unscaled(scaled_data_1, data_1, coefficients = False):
 
 assert unscaled(rescale(t_vectors), t_vectors) == t_vectors
 
+# Simple Linear Regression
+
+def prediction(alpha, beta, variable):
+    
+    '''
+    Given a constant term (alpha), a coefficient (beta) and 
+    a variable value (variable), predict the output.
+    '''
+    
+    return alpha + beta * variable
+
+def error(alpha, beta, variable, output):
+    
+    '''
+    Given a constant term (alpha), a coefficient (beta) and 
+    a variable value (variable) and the outcome of the 
+    experiment (output), calculate the error of the prediction
+    '''
+    
+    return prediction(alpha, beta, variable) - output
+
+def sum_of_squerrors(alpha, beta, variable, output):
+    
+    '''
+    Given a constant term (alpha), a coefficient (beta) and 
+    a list of variable values (variable) and a list of the 
+    outcomes of the experiment (output), return the sum of
+    the squared errors.
+    '''
+    
+    return sum([error(alpha, beta, variable[i], output[i])**2
+                for i in range(len(variable))])
+
+def r_squared(alpha, beta, data_1, data_2):
+    
+    '''
+    Given an estimate for a constant term (alpha) and a coefficient
+    (beta), as well as the datasets used to make those estimates
+    (data_1 and data_2) for a least squared fit model, calculate
+    the r squared value for how good of a fit the line is for the
+    data. 
+    '''
+    
+    return 1.0 - (sum_of_squerrors(alpha, beta, data_1, data_2)/
+                 sum_of_squares(demean(data_2)))
+
+def least_squares_fit(data_1, data_2):
+    
+    '''
+    Given sets of data, calculate the estimate of a constant
+    term (alpha) and a coefficient (beta) for the least 
+    squares fit model
+    
+    y = alpha + beta * x
+    '''
+    
+    beta = correlation(data_1, data_2) * standard_deviation(data_2) / standard_deviation(data_1)
+    alpha = mean(data_2) - beta * mean(data_1)
+    r2 = r_squared(alpha, beta, data_1, data_2)
+    
+    return alpha, beta, r2
 
 
 #
@@ -1371,7 +1560,8 @@ class TTest(StatFormatter):
     def __init__(self, data1, data2, 
                  test_type = "d", tails = 2, 
                  nan_policy = "omit", alpha = 0.05,
-                 labels = True, df = None, msew = None):
+                 labels = True, df = None, msew = None,
+                 threshold = 2):
         if not labels:
             assert all([type(d) in [int, float] for d in data1]), "There are non-numbers in the data..." 
             assert all([type(d) in [int, float] for d in data2]), "There are non-numbers in the data..."
@@ -1421,12 +1611,7 @@ class TTest(StatFormatter):
         else:
             self._correct_nans_ttest()
         
-        if df == None:
-            self.df = self.t_degree_freedom()
-        else:
-            self.df = df
-        
-        if len(self.d1[1]) < 2 or len(self.d2[1]) < 2:
+        if len(self.d1[1]) < threshold or len(self.d2[1]) < threshold:
             self.output = [{"id"  : ["TTest"],
                            "Test" : ["nan"],
                            "Group 1"   : [self.d1[0]],
@@ -1439,6 +1624,14 @@ class TTest(StatFormatter):
                            "tails"  : [self.tails],
                            "DF" : [float("nan")],
                            "alpha" : [self.alpha]}]
+            self.fill_values()
+            return
+        
+        if df == None:
+            self.df = self.t_degree_freedom()
+        else:
+            self.df = df
+        
         if df != None and msew != None:
             return self.ttest(msew = msew)
         
@@ -1555,7 +1748,12 @@ class TTest(StatFormatter):
                     "tails"       : [self.tails],
                     "DF"          : [self.df],
                     "alpha"       : [self.alpha]}
-        
+
+class PairwiseT(TTest):
+    
+    def __init__(self):
+        return None
+
 #
 #
 ############
