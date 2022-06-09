@@ -12,17 +12,19 @@ import matplotlib.pyplot as plt
 
 #from .. import general_helpers as gh
 
-from pathlib import Path
-hpath = Path(__file__).parent.absolute()
-help_path = ""
-for folder in str(hpath).split("/")[1:-1]:
-    help_path = f"{help_path}/{folder}"
-import sys
-sys.path.insert(0,help_path)
-
-import general_helpers as gh
-
-from mpl_plotting_helpers import handle_colours
+try:
+    from .. import general_helpers as gh
+    from ..mpl_plotting_helpers import handle_colours
+except:
+    from pathlib import Path
+    hpath = Path(__file__).parent.absolute()
+    help_path = ""
+    for folder in str(hpath).split("/")[1:-1]:
+        help_path = f"{help_path}/{folder}"
+    import sys
+    sys.path.insert(0,help_path)
+    import general_helpers as gh
+    from mpl_plotting_helpers import handle_colours
 
 #
 #

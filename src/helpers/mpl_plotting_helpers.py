@@ -123,7 +123,83 @@ colours = {"blues"  : ["steelblue", "cyan", "blue", "darkblue", "dodgerblue",
 
 tab_colours = ["tab:blue", "tab:orange", "tab:green", "tab:red",
                "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
-               
+
+class MathTextSciFormatter():
+    """
+    For updating ticks to nicely formatted scientific notation. Based on
+    the response to the following stackoverflow:
+    https://stackoverflow.com/questions/25750170/show-decimal-places-and-scientific-notation-on-the-axis-of-a-matplotlib-plot
+    """
+    def __init__(self, before_dec = 1, after_dec = 2):
+        self.b = before_dec
+        self.a = after_dec
+    def __call__(self, value, weight = "bold"):
+        scino_form = f"{value:{self.b}.{self.a}e}"
+        scino_form = scino_form.split(".")
+        if "+" in scino_form[1]:
+            scino_form[1] = scino_form[1].lower().split("e")
+            if scino_form[1][1][0] == "+":
+                scino_form[1][1] = scino_form[1][1][1:].lstrip("0")
+            if scino_form[1][1] == "":
+                scino_form[1][1] = "0"
+        if weight == "bold":
+            return fr"$\mathdefault{{{scino_form[0]}.{scino_form[1][0][:-1]}}} \times \mathdefault{{10}}^{{\mathdefault{{{scino_form[1][1]}}}}}$"
+        elif weight == "italic":
+            return fr"$\mathit{{{scino_form[0]}.{scino_form[1][0][:-1]} \times 10^{{{scino_form[1][1]}}}}}$"
+        else:
+            return fr"${scino_form[0]}.{scino_form[1][0][:-1]} \times 10^{{{scino_form[1][1]}}}$"
+
+def _fix_numbers(a_list, roundfloat = 2):
+    newlist = []
+    for item in a_list:
+        if int(item) == item:
+            newlist.append(int(item))
+        else:
+            newlist.append(round(item,2))
+    return newlist
+
+def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
+                 scino_after = 2, labels = [], rotation = 0,
+                  fontdict = {"fontfamily" : "sans-serif",
+                             "font" : "Arial",
+                              "ha" : "right",
+                              "fontweight" : "bold",
+                              "fontsize" : "12"}):
+    """
+    """
+    if which == "x" and labels == []:
+        xticks = list(mpl_axes.get_xticks())
+        mpl_axes.set_xticks(xticks)
+        if "fontweight" not in list(fontdict.keys()):
+            fontdict["fontweight"] = "bold"
+        if scino:
+            formatter = MathTextSciFormatter(before_dec = scino_before,
+                                             after_dec = scino_after)
+            mpl_axes.set_xticklabels([formatter(x, weight = fontdict["fontweight"]) for x in xticks], rotation = rotation,
+                                **fontdict)
+        else:
+            xticks = _fix_numbers(xticks)
+            mpl_axes.set_xticklabels([str(x) for x in xticks], rotation = rotation,**fontdict)
+    elif which == "x" and labels != []:
+        mpl_axes.set_xticklabels([str(x) for x in labels], rotation = rotation, **fontdict)
+    elif which == "y" and labels == []:
+        yticks = list(mpl_axes.get_yticks())
+        mpl_axes.set_yticks(yticks)
+        if "fontweight" not in list(fontdict.keys()):
+            fontdict["fontweight"] = "bold"
+        if scino:
+            formatter = MathTextSciFormatter(before_dec = scino_before,
+                                             after_dec = scino_after)
+            mpl_axes.set_yticklabels([formatter(y, weight = fontdict["fontweight"]) for y in yticks],
+                                **fontdict)
+        else:
+            yticks = _fix_numbers(yticks)
+            mpl_axes.set_yticklabels([str(y) for y in yticks], **fontdict)
+    else:
+        mpl_axes.set_yticklabels([str(x) for x in labels], rotation = rotation, **fontdict)
+    return None
+
+
                
 def handle_colours(colour_type,
                    n_groups,

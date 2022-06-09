@@ -16,19 +16,23 @@ import numpy as np
 
 import copy
 
-from pathlib import Path
-hpath = Path(__file__).parent.absolute()
-help_path = ""
-for folder in str(hpath).split("/")[1:-1]:
-    help_path = f"{help_path}/{folder}"
-import sys
-sys.path.insert(0,help_path)
-
-import general_helpers as gh
-import argcheck_helpers as ah
-import stats_helpers as sh
-
-from mpl_plotting_helpers import handle_colours, add_errorbar, colours, tab_colours
+try:
+    from .. import general_helpers as gh
+    from .. import argcheck_helpers as ah
+    from .. import stats_helpers as sh
+    from ..mpl_plotting_helpers import handle_colours, add_errorbar, colours, tab_colours, update_ticks
+except:
+    from pathlib import Path
+    hpath = Path(__file__).parent.absolute()
+    help_path = ""
+    for folder in str(hpath).split("/")[1:-1]:
+        help_path = f"{help_path}/{folder}"
+    import sys
+    sys.path.insert(0,help_path)
+    import general_helpers as gh
+    import argcheck_helpers as ah
+    import stats_helpers as sh
+    from mpl_plotting_helpers import handle_colours, add_errorbar, colours, tab_colours, update_ticks
 
 #
 #
@@ -137,13 +141,21 @@ def make_ymax(mpl_axes,
     Returns: a float defining the new ymax
     =================================================================================================
     """
+    # grab the current y tick positions from the axes
     current = list(mpl_axes.get_yticks())
+    # and find the y value range
     diff = abs( max(current) - min(current))
+    # Now check how many groups there are. If there are less than 5,
     if 1 <= len(labelled_groups) < 5:
+        # then extend the ymin by 30%
         return max(current) + 0.3*diff
+    # if there are between 5 and 10
     elif 5 <= len(labelled_groups) < 10:
+        # then extend the ymin by 45%
         return max(current) + 0.45*diff
+    # Otherwise, 
     else:
+        # extend the ymin by 60%
         return max(current) + 0.6*diff
 
 def make_ymin(mpl_axes,
@@ -162,65 +174,22 @@ def make_ymin(mpl_axes,
     Returns: a float defining the new ymin
     =================================================================================================
     """
+    # grab the current y tick positions from the axes
     current = list(mpl_axes.get_yticks())
+    # and find the y value range
     diff = abs( max(current) - min(current))
+    # Now check how many groups there are. If there are less than 5,
     if 1 <= len(labelled_groups) < 5:
+        # then extend the ymin by 10%
         return min(current) - 0.1*diff
+    # if there are between 5 and 10
     elif 5 <= len(labelled_groups) < 10:
+        # then extend the ymin by 15%
         return min(current) - 0.15*diff
+    # Otherwise, 
     else:
+        # extend the ymin by 20%
         return min(current) - 0.2*diff
-
-def make_ytick_labels(current_ticks, n, numstring = ""):
-    """
-    """
-    new_ticks = []
-    for item in current_ticks:
-        if int(item) == item:
-            new_ticks.append(f"{int(item)}{numstring}")
-        else:
-            new_ticks.append(f"{item:.1f}{numstring}")
-    return new_ticks
-
-def update_yticks(mpl_axes, fontdict = {"fontfamily" : "sans-serif",
-                                         "font" : "Arial",
-                                         "ha" : "right",
-                                         "fontweight" : "bold",
-                                         "fontsize" : "12"}):
-    """
-    """
-    current = mpl_axes.get_yticks()
-    diff = current[-1] - current[0]
-    if 0 < diff < 1000:
-        diff = current[1]-current[0]
-        mpl_axes.set_yticks(current)
-        mpl_axes.set_yticklabels(make_ytick_labels(current, len(current)),
-                                     **fontdict)
-    elif 1000 <= diff <= 999999:
-        diff = current[1]-current[0]
-        mpl_axes.set_yticks([i*(diff) for i in range(len(current))])
-        mpl_axes.set_yticklabels(make_ytick_labels([c/1000 for c in current], len(current), "K"),
-                                     **fontdict)
-    elif 1000000 <= diff:
-        diff = current[1]-current[0]
-        mpl_axes.set_yticks([i*(diff) for i in range(len(current))])
-        mpl_axes.set_yticklabels(make_ytick_labels([c/1000000 for c in current], len(current), "M"),
-                                     **fontdict)
-    return None
-
-def update_xticks(mpl_axes,
-                  xpos,
-                  xlabels,
-                  fontdict = {"fontfamily" : "sans-serif",
-                               "font" : "Arial",
-                               "ha" : "center",
-                               "fontweight" : "bold",
-                               "fontsize" : "12"}):
-    """
-    """
-    mpl_axes.set_xticks(xpos)
-    mpl_axes.set_xticklabels(xlabels, **fontdict)
-    return None
 
 def add_relative_axis(mpl_axes,
                       rel_data,
@@ -232,6 +201,10 @@ def add_relative_axis(mpl_axes,
                                "fontweight" : "bold",
                                "fontsize" : "12"},
                       ylabel = "Fold Change",
+                      axis_fontdict = dict(font = "Arial",
+                                         fontsize = 14,
+                                         fontweight = "bold",
+                                         rotation = 270, va = "baseline"),
                       remove_top_spine = True):
     """
     """
@@ -249,15 +222,12 @@ def add_relative_axis(mpl_axes,
                    current_lims[1] / info_dict["means"][rel_index[0]])
     for i in range(n):
         new_y.scatter(info_dict["xs"][i], data_scaled[i][1], alpha = 0)
-    update_yticks(new_y, fontdict = fontdict)
+    update_ticks(new_y, which = "y", scino = False, fontdict = fontdict)
     current_lims = mpl_axes.get_ylim()
     new_y.set_ylim(current_lims[0] / info_dict["means"][rel_index[0]],
                    current_lims[1] / info_dict["means"][rel_index[0]])
     new_y.set_ylabel(ylabel,
-                     font = "Arial",
-                     fontsize = 14,
-                     fontweight = "bold",
-                     rotation = 270, va = "baseline")
+                     **axis_fontdict)
     return None
 
 def update_ylims(ymin, ymax, mpl_axes, labelled_groups):
@@ -516,8 +486,13 @@ def dotplot(labelled_groups,
     # Axes related updates
     update_ylims(ax2, ymin, ymax)
     update_xlims(ax1,ax2)
-    update_yticks(ax2)
-    update_xticks(ax2, info_dict["centers"], [item[0] for item in groups])
+    update_ticks(ax2, which = "y", scino = True)
+    ax2.set_xticks(info_dict["centers"])
+    update_ticks(ax2, which = "x", labels = [item[0] for item in groups], fontdict = {"fontfamily" : "sans-serif",
+                                                                                      "font" : "Arial",
+                                                                                      "ha" : "center",
+                                                                                      "fontweight" : "bold",
+                                                                                      "fontsize" : "12"})
     if foldchange_axis and foldchange_group != None:
         add_relative_axis(ax2, foldchange_group, groups, info_dict)
     ax2.set_xlabel(xlabel, **{"fontfamily" : "sans-serif",
@@ -578,6 +553,7 @@ def dotplot(labelled_groups,
                                   "fontweight" : "bold",
                                   "fontsize" : "16"})
     ax2.spines["top"].set_visible(False)
+    plt.tight_layout()
     if save_file:
         plt.savefig(filename)
     return ax

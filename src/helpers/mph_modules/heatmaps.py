@@ -19,17 +19,19 @@ import matplotlib.cm as cm
 #    ticker is used for placing labels on heatmaps
 import matplotlib.ticker as ticker
 
-from pathlib import Path
-hpath = Path(__file__).parent.absolute()
-help_path = ""
-for folder in str(hpath).split("/")[1:-1]:
-    help_path = f"{help_path}/{folder}"
-import sys
-sys.path.insert(0,help_path)
-
-import general_helpers as gh
-
-from mpl_plotting_helpers import get_range
+try:
+    from .. import general_helpers as gh
+    from ..mpl_plotting_helpers import get_range
+except:
+    from pathlib import Path
+    hpath = Path(__file__).parent.absolute()
+    help_path = ""
+    for folder in str(hpath).split("/")[1:-1]:
+        help_path = f"{help_path}/{folder}"
+    import sys
+    sys.path.insert(0,help_path)
+    import general_helpers as gh
+    from mpl_plotting_helpers import get_range
 
 #
 #
