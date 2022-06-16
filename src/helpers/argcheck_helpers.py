@@ -282,6 +282,41 @@ def check_type(argument,
         assert type(argument) == ob_type, error
     # If all checks out, return the argument.
     return argument
+    
+def check_value(argument,
+                value,
+                error = "Where you at McNuggets?",
+                verbatum = False):
+    """
+    =================================================================================================
+    check_value(argument, value, error)
+    
+    This function checks to see whether the argument matches the value (or one of the values)
+    provided by the user.
+    =================================================================================================
+    Arguments:
+    
+    argument -> The input that the user would like to check
+    value    -> A value to compare the input to. Can also be a list of values
+    error    -> A string defining the error message to display to the user
+    =================================================================================================
+    Returns: The 'argument', if no errors are raised.
+    =================================================================================================
+    """
+    # If the user provides a list of values
+    if type(value) == in [list, tuple] and not verbatum:
+        # Then see whether the input value is in the list
+        assert argument in value, error
+    # Or if the user provides a list of values for comparison
+    elif type(value) in [list,tuple] and verbatum:
+        # Then check to see whether the input value is the list/tuple
+        assert argument == value, error
+    # Otherwise, the user provided one value
+    else:
+        # Then check to see whether the input 
+        assert argument == value, error
+    # If nothing explodes, return the argument.
+    return argument
 
 #
 #

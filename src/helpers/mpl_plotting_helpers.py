@@ -126,76 +126,209 @@ tab_colours = ["tab:blue", "tab:orange", "tab:green", "tab:red",
 
 class MathTextSciFormatter():
     """
-    For updating ticks to nicely formatted scientific notation. Based on
-    the response to the following stackoverflow:
+    =================================================================================================
+    MathTextSciFormatter()
+    
+    An object meant for taking numbers and turning them into nicely
+    formatted strings in scientific notation for plotting.
+    
+    Based on the response to the following stackoverflow:
     https://stackoverflow.com/questions/25750170/show-decimal-places-and-scientific-notation-on-the-axis-of-a-matplotlib-plot
+    =================================================================================================
+    No inheritence for this object
+    =================================================================================================
+    Methods:
+    
+    __init__(self, before_dec, after_dec)
+        -> Initialisation of the object, requires the number of digits before and after the
+           decimal (as integers) in the output.
+    __call__(self, value)
+        -> The output when the object is invoked (essentially if you treat this thing as
+           a function). Requires the number that will be formatted.
+    =================================================================================================
     """
-    def __init__(self, before_dec = 1, after_dec = 2):
-        self.b = before_dec
-        self.a = after_dec
-    def __call__(self, value, weight = "bold"):
+    def __init__(self,
+                 before_dec = 1,
+                 after_dec = 2):
+        """
+        =================================================================================================
+        __init__(self, before_dec, after_dec)
+        
+        initialisation of the object, simply stores the number of digits before and after the
+        decimal for use in call 
+        =================================================================================================
+        """
+        
+        self.b = ah.check_type(before_dec, int, error = "The 'before_dec' value is not an integer." )
+        self.a = ah.check_type(after_dec, int, error = "The 'before_dec' value is not an integer." )
+    def __call__(self, value):
+        """
+        =================================================================================================
+        __call__(self, value)
+        
+        When an instance of the object is invoked and given a number, this function will return the
+        nicely formatted string.
+        =================================================================================================
+        """
+        value = ah.check_type(value, [int, float], error = "The 'value' provided is neither an integer or a float.")
+        # First, take the input and create a string in 'e' notation
         scino_form = f"{value:{self.b}.{self.a}e}"
+        # Then split the string on the decimal.
         scino_form = scino_form.split(".")
+        # First, we will split the 1st item on the e character
+        scino_form[1] = scino_form[1].lower().split("e")
+        # Now we need to deal with the + sign
         if "+" in scino_form[1]:
-            scino_form[1] = scino_form[1].lower().split("e")
+            # and see whether the positive sign is leading
             if scino_form[1][1][0] == "+":
+                # If so, then remove the positive sign and any leading zeroes
                 scino_form[1][1] = scino_form[1][1][1:].lstrip("0")
+            # However if splitting leads to an empty string
             if scino_form[1][1] == "":
+                # then replace the ending with a zero
                 scino_form[1][1] = "0"
-        if weight == "bold":
-            return fr"$\mathdefault{{{scino_form[0]}.{scino_form[1][0][:-1]}}} \times \mathdefault{{10}}^{{\mathdefault{{{scino_form[1][1]}}}}}$"
-        elif weight == "italic":
-            return fr"$\mathit{{{scino_form[0]}.{scino_form[1][0][:-1]} \times 10^{{{scino_form[1][1]}}}}}$"
+        # Otherwise there is a - sign that we need to keep
         else:
-            return fr"${scino_form[0]}.{scino_form[1][0][:-1]} \times 10^{{{scino_form[1][1]}}}$"
+            # so we will keep the - sign and remove leading zeroes
+            scino_form[1][1] = scino_form[1][1][0] + scino_form[1][1][1:].lstrip("0")
+        return fr"$\mathdefault{{{scino_form[0]}.{scino_form[1][0][:-1]}}} \times \mathdefault{{10}}^{{\mathdefault{{{scino_form[1][1]}}}}}$"
 
-def _fix_numbers(a_list, roundfloat = 2):
+def _fix_numbers(a_list,
+                 roundfloat = 2):
+    """
+    =================================================================================================
+    _fix_numbers(a_list, roundfloat)
+    
+    A function that takes a list of numbers and returns those numbers as integers
+    (if they are integers) or as floats rounded to roundfloat.
+    =================================================================================================
+    Arguments:
+    
+    a_list     -> A list of numbers (floats or ints)
+    roundfloat -> (Default = 2) an integer defining the number of decimal places to round to.
+    =================================================================================================
+    Returns: A list of numbers provided in a_list as integers or floats
+    =================================================================================================
+    """
+    # The structure of this function is very basic.
+    # Initialise a list
     newlist = []
+    # Loop over the items in the input list
     for item in a_list:
+        # If the number is an integer
         if int(item) == item:
+            # Then add the int of the number
             newlist.append(int(item))
         else:
-            newlist.append(round(item,2))
+            # Otherwise round the number to the specified number of digits.
+            newlist.append(round(item,roundfloat))
+    # And return the reformatted list.
     return newlist
 
 def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
-                 scino_after = 2, labels = [], rotation = 0,
+                 scino_after = 2, roundfloat = 2, labels = [], rotation = 0,
                   fontdict = {"fontfamily" : "sans-serif",
                              "font" : "Arial",
                               "ha" : "right",
                               "fontweight" : "bold",
                               "fontsize" : "12"}):
     """
+    =================================================================================================
+    update_ticks(mpl_axes, which, scino, scino_before, scino_after, roundfloat, labels, 
+                 roatation, fontdict)
+    
+    This function generally handles axes tick formatting, which includes simply updating the ticks
+    or replacing them with labels.
+    =================================================================================================
+    Arguments:
+    
+    mpl_axes     -> A matplotlib axes object (that you have presumably plotted stuff on)
+    which        -> (Default 'x') A string, either 'x' or 'y', which axis to modify the ticks on
+    scino        -> (Default False) A boolean, whether to update the ticks to scientific notation
+                    Not invoked if labels are provided.
+    scino_before -> (Default 1) An integer, how many numbers to keep before the decimal
+    scino_after  -> (Default 2) An integer, how many numbers to keep after the decimal
+    roundfloat   -> (Default 2) An integer, how many decimals to round a number to
+    labels       -> (Default []) A list, either empty or containing new labels for your
+                    axis of choice. Number of labels must equal number of ticks.
+    rotation     -> (Default 0) A float that defines the angle for your axes labels.
+    fontdict     -> (Default dict(fontfamily = 'sans-serif', font = 'Arial', fontweight = "bold",
+                    fontsize = 12, ha = 'right')) A dictionary that defines font formatting.
+    =================================================================================================
+    Returns: None, the axes object is modified in place.
+    =================================================================================================
     """
+    #First, we need to check some of the inputs
+    mpl_axes = ah.check_type(mpl_axes, matplotlib.axes._subplot.AxesSubplot, 
+                            error = f"The argument 'mpl_axes' ({mpl_axes}) is not a matplotlib axes object.")
+    which = ah.check_value(which.lower(), ['x','y', 'X', 'Y'], 
+                           error = f"The argument 'which' ({which}) you provided is invalid. Try 'x' or 'y'.")
+    which = which.lower()
+    scino = ah.check_type(scino, bool,
+                          error = f"the argument 'scino' ({scino}) should be a boolean.")
+    scino_before = ah.check_type(scino_before, int,
+                                 error = f"The argument 'scino_before' ({scino_before}) is not an integer.")
+    scino_after = ah.check_type(scino_before, int,
+                                 error = f"The argument 'scino_after' ({scino_after}) is not an integer.")
+    roundfloat = ah.check_type(roundfloat, int,
+                                 error = f"The argument 'roundfloat' ({roundfloat}) is not an integer.")
+    labels = ah.check_type(labels, list,
+                           error = f"The argument 'labels' ({labels}) is not a list.")
+    rotation = ah.check_type(rotation, [int, float],
+                             error = "The argument 'rotation' ({rotation}) is not a number (float or int).")
+    fontdict = ah.check_type(fontdict, dict,
+                             error = "The argument 'fontdict' must be a dictionary.")
+    # If the user elects to update the x ticks and does not provide labels
     if which == "x" and labels == []:
+        # Then grab the xticks from the axes
         xticks = list(mpl_axes.get_xticks())
+        # Then set the xticks. To set the xticklabels, this is required.
         mpl_axes.set_xticks(xticks)
-        if "fontweight" not in list(fontdict.keys()):
-            fontdict["fontweight"] = "bold"
+        # If the user elects to have the ticks rendered in scientific notation
         if scino:
+            # Then initialise the MathTextSciFormatter object
             formatter = MathTextSciFormatter(before_dec = scino_before,
                                              after_dec = scino_after)
-            mpl_axes.set_xticklabels([formatter(x, weight = fontdict["fontweight"]) for x in xticks], rotation = rotation,
+            # and update the xitcklabels using the formatter, rotation, and font formatting.
+            mpl_axes.set_xticklabels([formatter(x) for x in xticks], rotation = rotation,
                                 **fontdict)
+        # If scientific notation is not desired
         else:
-            xticks = _fix_numbers(xticks)
+            # Then first fix the integer values
+            xticks = _fix_numbers(xticks, roundfloat = roundfloat)
+            # and update the xticklabels using the rotation and font formatting.
             mpl_axes.set_xticklabels([str(x) for x in xticks], rotation = rotation,**fontdict)
+    # If the user elects to update the x-axis and provides labels,
     elif which == "x" and labels != []:
+        # Then check that the user provided enough labels
+        assert len(list(mpl_axes.get_xticks())) == len(labels), "Too few labels were provided for the x tick labels."
+        # And if everythign looks good, update the ticks.
         mpl_axes.set_xticklabels([str(x) for x in labels], rotation = rotation, **fontdict)
+    # If the user elects to update the x ticks and does not provide labels
     elif which == "y" and labels == []:
+        # Then grab the yticks from the axes
         yticks = list(mpl_axes.get_yticks())
+        # and set the yticks. To use yticklabels, this is necessary.
         mpl_axes.set_yticks(yticks)
-        if "fontweight" not in list(fontdict.keys()):
-            fontdict["fontweight"] = "bold"
+        # If the user elects to render numbers in scientific notation.
         if scino:
+            # Then initialise the MathTextSciFormatter object
             formatter = MathTextSciFormatter(before_dec = scino_before,
                                              after_dec = scino_after)
-            mpl_axes.set_yticklabels([formatter(y, weight = fontdict["fontweight"]) for y in yticks],
+            # and update the yticklabels using the formatter, rotation, and font formatting.
+            mpl_axes.set_yticklabels([formatter(y) for y in yticks],
                                 **fontdict)
+        # If scientific notation is not desired
         else:
+            # then fix the numbers in the yticks
             yticks = _fix_numbers(yticks)
+            # and update the yticklabels using the font formatting
             mpl_axes.set_yticklabels([str(y) for y in yticks], **fontdict)
+    # If ther user elects to update the yticks and provides labels
     else:
+        # Then check that the user provided enough labels
+        assert len(list(mpl_axes.get_yticks())) == len(labels), "Too few labels were provided for the y tick labels."
+        # And if everythign looks good, update the ticks.
         mpl_axes.set_yticklabels([str(x) for x in labels], rotation = rotation, **fontdict)
     return None
 
