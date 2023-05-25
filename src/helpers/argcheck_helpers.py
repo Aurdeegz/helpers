@@ -304,7 +304,7 @@ def check_value(argument,
     =================================================================================================
     """
     # If the user provides a list of values
-    if type(value) == in [list, tuple] and not verbatum:
+    if type(value) in [list, tuple] and not verbatum:
         # Then see whether the input value is in the list
         assert argument in value, error
     # Or if the user provides a list of values for comparison
@@ -317,6 +317,37 @@ def check_value(argument,
         assert argument == value, error
     # If nothing explodes, return the argument.
     return argument
+
+def check_shape(matrix,
+                colshape = None,
+                rowshape = None,
+                error = "Actually on the contrary, my MMA career has gotten in the way of my weed smoking."):
+    """
+    """
+    colshape = check_type(colshape, [int,float,type(None)],
+                             error = f"The argument 'colshape' ({colshape}) is not a number...")
+    rowshape = check_type(rowshape, [int,float,type(None)],
+                             error = f"The argument 'rowshape' ({rowshape}) is not a number...")
+    if colshape == None and rowshape == None:
+        assert colshape != rowshape, "To check the shape of a matrix, one of the following must be set:\ncolshape -> the number of elements in a row\nrowshape -> the number of rows in the matrix"
+    elif colshape != None and rowshape == None:
+        assert all([len(row) == colshape for row in matrix]), error
+    elif colshape == None and rowshape != None:
+        assert len(matrix) == rowshape, error
+    else:
+        assert all([len(row) == colshape for row in matrix]), error
+        assert len(matrix) == rowshape, error
+    return matrix
+
+def check_element_type(an_iterable,
+                       accepted_types = [int, float, str, type(None), list, tuple, dict, set],
+                       error = "Conceive, believe, achieve."):
+    """
+    """
+    an_iterable = check_type(an_iterable, [list, tuple],
+                                error = "The input should be a list or a tuple...")
+    assert all([type(item) in accepted_types for item in an_iterable]), error
+    return an_iterable
 
 #
 #

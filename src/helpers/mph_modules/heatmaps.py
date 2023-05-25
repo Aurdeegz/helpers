@@ -80,7 +80,8 @@ def infer_aspect_ratio(xlabels,
         return "auto"
 
 def apply_sigstar(q_value,
-                  char = "$*$"):
+                  char = "$*$",
+                   ns = ""):
     """
     =================================================================================================
     apply_sigstar(q_value, char)
@@ -106,6 +107,10 @@ def apply_sigstar(q_value,
     if q != q:
         # Then return an empty string
         return ""
+    elif q == 0:
+        return "x"
+    elif q == 69420:
+        return r"$\Delta$"
     # Or if the input value is less than 0.001
     elif q <= 0.001:
         # Then return the char variable three times
@@ -121,7 +126,7 @@ def apply_sigstar(q_value,
     # Otherwise
     else:
         # Return an empty string
-        return "n.s."
+        return ns
 
 def make_sigstars(q_list, char = fr"$*$"):
     """
@@ -170,6 +175,17 @@ def plot_sigstars(axes,
             # Add text to the axes object at row j, column i.
             axes.text(j,i,stars[i][j], ha = "center",
                            va = "center", color = "black", **text_dict)
+    return None
+
+def add_urls(axes, url_list):
+    """
+    Add URLs to the boxes if they are provided
+    """
+    # 
+    for i in range(len(url_list)):
+        for j in range(len(url_list[i])):
+            axes.annotate("LINK", xy=(j,i), ha="center", va="center",
+                            url=url_list[i][j], alpha = 0, bbox=dict(color='w', alpha=0, url=url_list[i][j]))
     return None
 
 def get_sig_indices(sig_stars_list):
@@ -246,13 +262,16 @@ def heatmap(data_list,
             clb_label = "I'm A\nLabel!",
             heat_title = "I'm a heatmap!!",
             remove_spines = True,
+            aspect = "equal",
             significance = None,
             sig_filter = False,
             maxs = None,
+            urls = [],
             save = True,
             img_type = 'pdf',
             img_name = "im_a_heatmap",
             subplot_args = {'figsize' : (12,12)},
+            add_colorbar = True,
             colorbar_args = {"shrink" : 0.5,
                              "pad"    : 0.08,
                              "fraction" : 0.046},
@@ -295,16 +314,15 @@ def heatmap(data_list,
     
     =================================================================================================
     """
-    subplot_args["figsize"] = (len(data_list[0])+10, len(data_list))
-    print(subplot_args)
+    if len(data_list) > 100 and aspect == "equal":
+        subplot_args["figsize"] = (len(data_list[0])+10//2, len(data_list)//2)
+    elif aspect == "equal":
+        subplot_args["figsize"] = (len(data_list[0])+10, len(data_list))
     # We aren't going to check the arguments here, since many of them
     # will be checked in other functions
     #
-    if xticks == None:
-        xticks = ["" for _ in range(len(data_list[0]))]
-    if yticks == None:
-        yticks = ["" for _ in range(len(data_list))]
     plt.rcParams["font.size"] = 12
+    plt.rcParams["font.weight"] = "bold"
     # Make data_list into an array to be used in ax.imshow()
     data_arr = np.array(data_list, dtype = float)
     # Find the range of the values used in the heatmap.
@@ -325,10 +343,10 @@ def heatmap(data_list,
     # is controlled by infer_aspect_ratio()
     heat = ax.imshow(data_arr,
                      cmap = use_cmap,
-                     alpha = 0.75,
+                     alpha = 1,
                      vmin = minval,
                      vmax = maxval,
-                     aspect = "equal",
+                     aspect = aspect,
                      interpolation = "nearest")
     # This will remove the lines around each box and add some white space.
     # It looks visually appealing (at least to me).
@@ -342,21 +360,46 @@ def heatmap(data_list,
     # Set the title of the plot
     ax.set_title(heat_title, fontsize = 16, **textdict)
     # Make the colorbar, passing in the colorbar_args dictionary
-    clb = plt.colorbar(heat,
-                       **colorbar_args)
-    # And set the label of the colorbar.
-    clb.ax.set_title(clb_label, fontsize = 12, **textdict)
+    if add_colorbar:
+        clb = plt.colorbar(heat,
+                        **colorbar_args)
+        # And set the label of the colorbar.
+        clb.ax.set_title(clb_label, fontsize = 12, **textdict)
     # Next, set the ticks of the axis in the correct places.
-    ax.set_xticks([i for i in range(len(data_arr[0]))])
-    ax.set_yticks([i for i in range(len(data_arr))])
     # and if xticks are given
-    if xticks != None:
+    if xticks == None:
+        ax.set_xticks([])
+        ax.set_xticklabels([])
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom=False,      # ticks along the bottom edge are off
+            top=False,         # ticks along the top edge are off
+            labelbottom=False) # labels along the bottom edge are off
+    else:
+        ax.set_xticks([i for i in range(len(data_arr[0]))])
         # Then label the x axis with the xticks
-        ax.set_xticklabels(xticks, rotation = 45, ha = 'right', rotation_mode = "anchor", **textdict)
-    # and if yticks are given
-    if yticks != None:
+        ax.set_xticklabels(xticks, rotation = 45, ha = 'right',
+        rotation_mode = "anchor", fontdict = textdict)
+    if yticks == None:
+        ax.set_yticks([])
         # Then label the y axis with the given labels
-        ax.set_yticklabels(yticks, ha = "right", va = "center", **textdict)
+        ax.set_yticklabels([])
+        plt.tick_params(
+            axis='y',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            left=False,      
+            right=False,         
+            labelbottom=False) # labels along the bottom edge are off
+    else:
+        ax.set_yticks([i for i in range(len(data_arr))])
+        # Then label the y axis with the given labels
+        a = ax.set_yticklabels(yticks, ha = "right", va = "center",
+                           fontdict = textdict)
+    #
+    if urls != []:
+        # Add URLs to the boxes in each row
+        add_urls(ax, urls)
     # These next commands are meant to help with placement of the xticks and yticks.
     # I admit I do not fully understand what they do.
     tick_spacing = 1

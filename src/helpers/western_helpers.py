@@ -14,9 +14,9 @@ sys.path.insert(0,help_path)
 
 import pandas as pd
 
-import stats_helpers as sh
+from helpers import stats_helpers as sh
 
-import mpl_plotting_helpers as mph
+from helpers import mpl_plotting_helpers as mph
 
 #
 #

@@ -37,6 +37,8 @@ help_path = Path(__file__).parent.absolute()
 import sys
 sys.path.insert(0,help_path)
 
+import math
+
 # Import base matplotlib to show the version.
 import matplotlib
 
@@ -50,6 +52,7 @@ import matplotlib.ticker as ticker
 
 from matplotlib import gridspec
 from matplotlib.patches import Patch
+from scipy.stats import gaussian_kde
 
 # Numpy is used for creating arrays that matplotlib is able to handle
 import numpy as np
@@ -64,13 +67,14 @@ import random
 # General helpers has a number of functions I use frequently in
 # my scripts. They are all placed in that module purely for
 # convenience and generalizability.
-import general_helpers as gh
+from helpers import general_helpers as gh
+from helpers import argcheck_helpers as ah
 
 # The Pandas Helper file has scripts that help manage Pandas
 # DataFrames, and perform various actions on lists of dataframes
-import pandas_helpers as ph
+from helpers import pandas_helpers as ph
 
-import stats_helpers as sh
+from helpers import stats_helpers as sh
 
 print(f"matplotlib    {matplotlib.__version__}")
 print(f"numpy         {np.__version__}\n")
@@ -95,8 +99,8 @@ colours = {"blues"  : ["steelblue", "cyan", "blue", "darkblue", "dodgerblue",
                       "lightcoral", "darksalmon", "mistyrose"],
            "purples": ["indigo", "mediumpurple", "purple",
                        "darkviolet", "mediumorchid", "plum", "thistle"],
-           "greens" : ["darkolivegreen", "olivedrab", "green", "forestgreen",
-                       "limegreen", "springgreen", "lawngreen"],
+           "greens" : ["darkolivegreen", "olivedrab", "green",
+                       "limegreen", "chartreuse", "springgreen", "lawngreen"],
            "oranges": ["darkorange", "orange", "goldenrod", "gold", "yellow",
                        "khaki", "lightyellow"],
            "browns" : ["brown","saddlebrown", "sienna", "chocolate", "peru",
@@ -161,7 +165,7 @@ class MathTextSciFormatter():
         
         self.b = ah.check_type(before_dec, int, error = "The 'before_dec' value is not an integer." )
         self.a = ah.check_type(after_dec, int, error = "The 'before_dec' value is not an integer." )
-    def __call__(self, value):
+    def __call__(self, value, log = False):
         """
         =================================================================================================
         __call__(self, value)
@@ -171,6 +175,8 @@ class MathTextSciFormatter():
         =================================================================================================
         """
         value = ah.check_type(value, [int, float], error = "The 'value' provided is neither an integer or a float.")
+        if log:
+            value = math.log2(value)
         # First, take the input and create a string in 'e' notation
         scino_form = f"{value:{self.b}.{self.a}e}"
         # Then split the string on the decimal.
@@ -194,7 +200,8 @@ class MathTextSciFormatter():
         return fr"$\mathdefault{{{scino_form[0]}.{scino_form[1][0][:-1]}}} \times \mathdefault{{10}}^{{\mathdefault{{{scino_form[1][1]}}}}}$"
 
 def _fix_numbers(a_list,
-                 roundfloat = 2):
+                 roundfloat = 2,
+                 log = False):
     """
     =================================================================================================
     _fix_numbers(a_list, roundfloat)
@@ -215,21 +222,36 @@ def _fix_numbers(a_list,
     newlist = []
     # Loop over the items in the input list
     for item in a_list:
-        # If the number is an integer
-        if int(item) == item:
-            # Then add the int of the number
-            newlist.append(int(item))
+        if log:
+            # If the number is an integer
+            if int(math.log2(item)) == math.log2(item):
+                # Then add the int of the number
+                newlist.append(int(math.log2(item)))
+            else:
+                # Otherwise round the number to the specified number of digits.
+                newlist.append(round(math.log2(item),roundfloat))
         else:
-            # Otherwise round the number to the specified number of digits.
-            newlist.append(round(item,roundfloat))
+            # If the number is an integer
+            if int(item) == item:
+                # Then add the int of the number
+                newlist.append(int(item))
+            else:
+                # Otherwise round the number to the specified number of digits.
+                newlist.append(round(item,roundfloat))
     # And return the reformatted list.
     return newlist
 
-def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
-                 scino_after = 2, roundfloat = 2, labels = [], rotation = 0,
+def _check_lims(mpl_axes, ticks, which = "x"):
+    if which == "x":
+        lims = list(mpl_axes.get_xlim())
+    else:
+        lims = list(mpl_axes.get_ylim())
+    return [tick for tick in ticks if tick >= lims[0] and tick <= lims[1]]
+
+def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1, log = False,
+                 scino_after = 2, roundfloat = 2, labels = [], rotation = 0, anchor = "center",
                   fontdict = {"fontfamily" : "sans-serif",
                              "font" : "Arial",
-                              "ha" : "right",
                               "fontweight" : "bold",
                               "fontsize" : "12"}):
     """
@@ -259,8 +281,8 @@ def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
     =================================================================================================
     """
     #First, we need to check some of the inputs
-    mpl_axes = ah.check_type(mpl_axes, matplotlib.axes._subplot.AxesSubplot, 
-                            error = f"The argument 'mpl_axes' ({mpl_axes}) is not a matplotlib axes object.")
+    #mpl_axes = ah.check_type(mpl_axes, matplotlib.axes._subplots.AxesSubplot, 
+    #                        error = f"The argument 'mpl_axes' ({mpl_axes}) is not a matplotlib axes object.")
     which = ah.check_value(which.lower(), ['x','y', 'X', 'Y'], 
                            error = f"The argument 'which' ({which}) you provided is invalid. Try 'x' or 'y'.")
     which = which.lower()
@@ -281,8 +303,9 @@ def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
     # If the user elects to update the x ticks and does not provide labels
     if which == "x" and labels == []:
         # Then grab the xticks from the axes
-        xticks = list(mpl_axes.get_xticks())
+        xticks = [float(item) for item in list(mpl_axes.get_xticks())]
         # Then set the xticks. To set the xticklabels, this is required.
+        xticks = _check_lims(mpl_axes, xticks, which = "x")
         mpl_axes.set_xticks(xticks)
         # If the user elects to have the ticks rendered in scientific notation
         if scino:
@@ -290,24 +313,26 @@ def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
             formatter = MathTextSciFormatter(before_dec = scino_before,
                                              after_dec = scino_after)
             # and update the xitcklabels using the formatter, rotation, and font formatting.
-            mpl_axes.set_xticklabels([formatter(x) for x in xticks], rotation = rotation,
+            mpl_axes.set_xticklabels([formatter(x) for x in xticks], rotation = rotation, ha = anchor, 
                                 **fontdict)
         # If scientific notation is not desired
         else:
             # Then first fix the integer values
-            xticks = _fix_numbers(xticks, roundfloat = roundfloat)
+            xticks = _fix_numbers(xticks, roundfloat = roundfloat, log = log)
             # and update the xticklabels using the rotation and font formatting.
-            mpl_axes.set_xticklabels([str(x) for x in xticks], rotation = rotation,**fontdict)
+            mpl_axes.set_xticklabels([str(x) for x in xticks], rotation = rotation, ha = anchor, **fontdict)
     # If the user elects to update the x-axis and provides labels,
     elif which == "x" and labels != []:
         # Then check that the user provided enough labels
         assert len(list(mpl_axes.get_xticks())) == len(labels), "Too few labels were provided for the x tick labels."
         # And if everythign looks good, update the ticks.
-        mpl_axes.set_xticklabels([str(x) for x in labels], rotation = rotation, **fontdict)
+        print(labels)
+        mpl_axes.set_xticklabels([str(x) for x in labels], rotation = rotation, ha = anchor, **fontdict)
     # If the user elects to update the x ticks and does not provide labels
     elif which == "y" and labels == []:
         # Then grab the yticks from the axes
-        yticks = list(mpl_axes.get_yticks())
+        yticks = [float(item) for item in list(mpl_axes.get_yticks())]
+        yticks = _check_lims(mpl_axes, yticks, which = "y")
         # and set the yticks. To use yticklabels, this is necessary.
         mpl_axes.set_yticks(yticks)
         # If the user elects to render numbers in scientific notation.
@@ -321,7 +346,7 @@ def update_ticks(mpl_axes, which = "x", scino=False, scino_before = 1,
         # If scientific notation is not desired
         else:
             # then fix the numbers in the yticks
-            yticks = _fix_numbers(yticks)
+            yticks = _fix_numbers(yticks, log = log)
             # and update the yticklabels using the font formatting
             mpl_axes.set_yticklabels([str(y) for y in yticks], **fontdict)
     # If ther user elects to update the yticks and provides labels
@@ -498,7 +523,7 @@ def add_errorbar(mpl_axes, x_pos, y_pos,
 #
 #     Functions: Bar Plots
 
-from mph_modules.barcharts import bars
+from helpers.mph_modules.barcharts import bars
 
 #
 #
@@ -506,7 +531,7 @@ from mph_modules.barcharts import bars
 #
 #      Functions: Heatmaps
 
-from mph_modules.heatmaps import heatmap
+from helpers.mph_modules.heatmaps import heatmap
 
 #
 #
@@ -516,7 +541,15 @@ from mph_modules.heatmaps import heatmap
 
 # Make dotplots
 
-from mph_modules.dotplots import dotplot
+from helpers.mph_modules.dotplots import dotplot
+
+#
+#
+############################################################################################################
+#
+# Make volcano plots
+
+from helpers.mph_modules.volcano_erupt import volcano, volcano_array
 
 #
 #
@@ -547,9 +580,9 @@ def scatter_gausskde(d1,d2, ax, scatterargs = {"s" : 20,
         ys = [a+b*xs[0], a+b*xs[1]]
         ax.plot(xs, ys, color = "black", linestyle = ":",
                 label = f"$y={a:.2f}+{b:.2f}x$\n$r^2 = {r2:.3f}$")
-    xy=np.vstack(remove_nanpairs(d1,d2))
+    xy=np.vstack(sh.remove_nanpairs(d1,d2))
     z = gaussian_kde(xy)(xy)
-    ax.scatter(*remove_nanpairs(d1,d2), c=z, label = f"$n={len(data1)}$",
+    ax.scatter(*sh.remove_nanpairs(d1,d2), c=z, label = f"$n={len(data1)}$",
                **scatterargs)
     ax.legend(loc="upper left")
     if xlim != None:

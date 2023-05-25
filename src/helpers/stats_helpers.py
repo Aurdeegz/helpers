@@ -55,7 +55,7 @@ from scipy.interpolate import UnivariateSpline
 
 from random import normalvariate, randint, seed
 
-import general_helpers as gh
+from helpers import general_helpers as gh
 
 print(f"numpy        {np.__version__}")
 print(f"scipy         {scipy.__version__}")
@@ -202,7 +202,7 @@ def impute_list(a_list, function, parameters = [], replace = float("nan")):
 def total_impute(data, matrix, col_ids = [],
                  width = 0.3, shift = 1.8, r_seed = 1):
     seed(r_seed)
-    t_data = unpack_list(data[1:])
+    t_data = gh.unpack_list(data[1:])
     t_data = [d for d in t_data if d == d]
     data_mean = mean(t_data)
     data_sd = standard_deviation(t_data)
@@ -213,7 +213,7 @@ def total_impute(data, matrix, col_ids = [],
     print(f"\tstandard deviation {n_sd:.3f} to replace nans\n")
     i_data = [impute_list(item, normalvariate, parameters = [n_mean,n_sd]) for item in data]
     i_data = [gh.transform_values(item) for item in i_data]
-    newmatrix = copy.copy(matrix)
+    newmatrix = copy.deepcopy(matrix)
     imputed = [[] for i in col_ids]
     for row in range(1,len(newmatrix)):
         for col in col_ids:
@@ -263,7 +263,7 @@ def impute_matrix(a_matrix, style = "total", col_ids = [], grouped = False,
         print(f"\tUser defined seed of {r_seed} for imputation...\n")
     data = [[item[i] for i in col_ids] for item in a_matrix]
     if style == "total":
-        return total_impute(data, a_matrix, col_ids = col_ids,
+        return total_impute(data, copy.copy(a_matrix), col_ids = col_ids,
                            width = width, shift = shift, r_seed = r_seed)
     elif style == "col":
         assert False, "Under development"

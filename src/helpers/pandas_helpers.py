@@ -53,17 +53,17 @@ import numpy as np
 # SciPy, so I coded some statistics. There also is no
 # standard module for applying the Storey method for
 # q-value estimation, so I coded that as well.
-import stats_helpers as hs
+from helpers import stats_helpers as hs
 
 # General helpers has a number of functions I use frequently in
 # my scripts. They are all placed in that module purely for
 # convenience and generalizability.
-import general_helpers as gh
+from helpers import general_helpers as gh
 
 # Argcheck helpers has functions that I use to check the
 # validity of arguments in functions, since Python is
 # weakly typed.
-import argcheck_helpers as ah
+from helpers import argcheck_helpers as ah
 
 print(f"pandas        {pd.__version__}")
 print(f"numpy         {np.__version__}\n")

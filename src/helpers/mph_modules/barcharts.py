@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 try:
     from .. import general_helpers as gh
-    from ..mpl_plotting_helpers import handle_colours
+    from ..mpl_plotting_helpers import handle_colours, update_ticks
 except:
     from pathlib import Path
     hpath = Path(__file__).parent.absolute()
@@ -23,8 +23,8 @@ except:
         help_path = f"{help_path}/{folder}"
     import sys
     sys.path.insert(0,help_path)
-    import general_helpers as gh
-    from mpl_plotting_helpers import handle_colours
+    from helpers import general_helpers as gh
+    from helpers.mpl_plotting_helpers import handle_colours, update_ticks
 
 #
 #
@@ -94,9 +94,12 @@ def bars(xvals,
          img_name = "pokedex_completion",
          show = True,
          subplot_args = {"figsize" : (24,12)},
-         set_kwargs = {"xlabel" : "Ash Ketchum",
-                       "ylabel" : "Pokemon Caught",
-                       "title"  : "I wanna be, the very best, like NO ONE EVER WAS"}):
+         title = "",
+         xlabel = "",
+         ylabel = "",
+        textdict = {"fontfamily" : "sans-serif",
+                    "font" : "Arial",
+                    "fontweight" : "bold"}):
     """
     =================================================================================================
     bars(*args, **kwargs)
@@ -152,29 +155,35 @@ def bars(xvals,
             # with a colour.
             ax.bar(indices[i], yval_matrix[i],
                    width = width, label = col_labels[i],
-                   edgecolor = "black", color = color[i])
+                   edgecolor = "black", color = color[i], alpha = 0.75)
         # If no labels are provided,
         else:
             # Then plot a bar all the same, but without a label.
             ax.bar(indices[i], yval_matrix[i],
-                   width = width, label = col_labels[i], color = color[i])
+                   width = width, label = col_labels[i], color = color[i],alpha = 0.75)
     # Once all of the bars are plotted, plot a legend.
-    ax.legend()
+    ax.legend(prop=dict(family = "Arial", weight = "bold", size = 12) )
     # If the number of indices lists is even
     if len(indices) % 2 == 0:
         # Then calculate the position of the labels based on an even assumption.
         ax.set_xticks(indices[len(indices)//2 + 1])
-        ax.set_xticklabels(xvals,rotation = 45, ha = 'right', rotation_mode = "anchor")
+        ax.set_xticklabels(xvals,rotation = 25, ha = 'right', rotation_mode = "anchor", 
+                           fontsize = 12, **textdict)
     # If the number of indices lists is odd
     elif len(indices) % 2 == 1:
         # Then calculate the position of the labels based on an odd assumption.
         ax.set_xticks([item + width/2 for item in indices[len(indices)//2]])
-        ax.set_xticklabels(xvals,rotation = 45, ha = 'right', rotation_mode = "anchor")
+        ax.set_xticklabels(xvals,rotation = 25, ha = 'right', rotation_mode = "anchor",
+                           fontsize = 12, **textdict)
     # If set_kwargs is not en empty dictioanry
-    if set_kwargs != {}:
-        # Then run ax.set{} using that dictionary. This will fail if the
-        # arguments are not arguments in the set() method.
-        ax.set(**set_kwargs)
+    # Then run ax.set{} using that dictionary. This will fail if the
+    # arguments are not arguments in the set() method.
+    ax.set_title(title, fontsize = 16, **textdict)
+    ax.set_xlabel(xlabel, fontsize = 14, **textdict)
+    ax.set_ylabel(ylabel, fontsize = 14, **textdict)
+    textdict["fontsize"] = 12
+    update_ticks(ax, which = "y", fontdict = textdict)
+    del textdict["fontsize"]
     # Save the figure using the image name and image type
     if show:
         plt.savefig(f"{img_name}.{img_type}", bbox_inches = "tight")
