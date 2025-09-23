@@ -14,7 +14,9 @@ import matplotlib.pyplot as plt
 
 try:
     from .. import general_helpers as gh
-    from ..mpl_plotting_helpers import handle_colours, update_ticks
+    from .. import argcheck_helpers as ah
+    from .. import stats_helpers as sh
+    from ..mpl_plotting_helpers import handle_colours, add_errorbar, colours, tab_colours, update_ticks, _fix_numbers, _check_lims
 except:
     from pathlib import Path
     hpath = Path(__file__).parent.absolute()
@@ -23,8 +25,12 @@ except:
         help_path = f"{help_path}/{folder}"
     import sys
     sys.path.insert(0,help_path)
-    from helpers import general_helpers as gh
-    from helpers.mpl_plotting_helpers import handle_colours, update_ticks
+    import general_helpers as gh
+    import argcheck_helpers as ah
+    import stats_helpers as sh
+    from mpl_plotting_helpers import handle_colours, add_errorbar, colours, tab_colours, update_ticks, _fix_numbers, _check_lims
+
+
 
 #
 #
@@ -86,6 +92,7 @@ def bars_ind(n_items,
 
 def bars(xvals,
          yval_matrix,
+         negval_matrix = None,
          col_labels = None,
          separation = 0.3,
          colour_type = "all",
@@ -131,6 +138,10 @@ def bars(xvals,
     
     =================================================================================================
     """
+    #
+    if negval_matrix != None:
+        assert len(negval_matrix) == len(yval_matrix), "negval_matrix and yval_matrix are not the same size"
+        assert all([len(negval_matrix[i]) == len(yval_matrix[i]) for i in range(len(negval_matrix))]), "negval_matrix and yval_matrix are not the same size"
     # Set the global font size parameter to 20.
     plt.rcParams["font.size"] = 20
     # Get the indices list (of lists) and the width of the bars
@@ -156,11 +167,21 @@ def bars(xvals,
             ax.bar(indices[i], yval_matrix[i],
                    width = width, label = col_labels[i],
                    edgecolor = "black", color = color[i], alpha = 0.75)
+            # 
+            if negval_matrix != None:
+                ax.bar(indices[i], negval_matrix[i],
+                       width = width, label = col_labels[i],
+                       edgecolor = "black", color = color[i], alpha = 0.75)
         # If no labels are provided,
         else:
             # Then plot a bar all the same, but without a label.
             ax.bar(indices[i], yval_matrix[i],
                    width = width, label = col_labels[i], color = color[i],alpha = 0.75)
+            # 
+            if negval_matrix != None:
+                ax.bar(indices[i], negval_matrix[i],
+                       width = width, label = col_labels[i],
+                       edgecolor = "black", color = color[i], alpha = 0.75)
     # Once all of the bars are plotted, plot a legend.
     ax.legend(prop=dict(family = "Arial", weight = "bold", size = 12) )
     # If the number of indices lists is even
@@ -175,6 +196,11 @@ def bars(xvals,
         ax.set_xticks([item + width/2 for item in indices[len(indices)//2]])
         ax.set_xticklabels(xvals,rotation = 25, ha = 'right', rotation_mode = "anchor",
                            fontsize = 12, **textdict)
+    #
+    if negval_matrix != None:
+        xs = list(ax.get_xlim())
+        ys = [0,0]
+        ax.plot(xs, ys, color = "black")
     # If set_kwargs is not en empty dictioanry
     # Then run ax.set{} using that dictionary. This will fail if the
     # arguments are not arguments in the set() method.

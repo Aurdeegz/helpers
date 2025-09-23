@@ -799,6 +799,9 @@ def replace_value(a_list, value, newvalue):
         if item == value:
             # Then add the new value
             new_list.append(newvalue)
+        # If you're trying to pass float("nan") and replace them
+        elif value != value and item != item:
+            newlist.append(newvalue)
         # Otherwise, add the item to the new_list
         else:
             new_list.append(item)
@@ -856,7 +859,7 @@ def add_col(a_matrix, newhead, newval = [],
     if newhead_pos == -1:
         heads = a_matrix[head_loc] + [newhead]
     else:
-        heads = a_matrix[head_loc][:newhead_pos+1] + [newhead] + a_matrix[head_loc][newhead_pos:]
+        heads = a_matrix[head_loc][:newhead_pos+1] + [newhead] + a_matrix[head_loc][newhead_pos+1:]
     # Initialize the newmatrix with the headers list
     newmatrix = [heads]
     # and create a matrix that does not include the headers
@@ -867,7 +870,7 @@ def add_col(a_matrix, newhead, newval = [],
         if newhead_pos == -1:
             newrow = nohead[i] + [newval[i]]
         else:
-            newrow = nohead[i][:newhead_pos+1] + [newval[i]] + nohead[i][newhead_pos:]
+            newrow = nohead[i][:newhead_pos+1] + [newval[i]] + nohead[i][newhead_pos+1:]
         newmatrix.append(newrow)
     # Then return the newmatrix with the column added.
     return newmatrix
