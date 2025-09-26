@@ -87,14 +87,15 @@ def get_xcoords(data_matrix, width = 7):
         # Loop over the number of times width splits the list
         # Integer division rounds down, so for m in [0,width],
         # m // width = 0. The +1 tells us to loop once for that group
-        for j in range(m//width +1):
+        nrows = m//width+1
+        for j in range(nrows):
             xi_coords += [(i+1)*0.6 - 0.2 + 0.05*(k) for k in range(width)]
         if m%2 == 0:
             # Then this is an even number, so get even around the center
-            x_coords.append(xi_coords[(width//2 + 1) - m//2:width//2+m//2+1])
+            x_coords.append(xi_coords[((width*nrows)//2 + 1) - m//2:(width*nrows)//2+m//2+1])
         else:
             # Otherwise, this is odd so we want all tha points
-            x_coords.append(xi_coords[(width//2 + 1) - m//2:(width//2 + 1) + m//2+1])
+            x_coords.append(xi_coords[((width*nrows)//2 + 1) - m//2:((width*nrows)//2 + 1) + m//2+1])
     return x_coords, data_matrix
 
 def get_data_info(data_matrix, width = 7):
